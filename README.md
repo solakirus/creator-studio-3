@@ -9,7 +9,8 @@ own identity on Android and Windows, a backup that covers everything, permanent 
 canvas built in (episode and clip boards, Content → Boards), episode shots ↔ board cards with the
 stills picker, importers for v2 / Storyboard / Planner, Suggest shots, the week board and Paper.
 Also: the laptop sidebar, board fonts that work offline, and clip boards that follow the clip's flow.
-Handwritten notes are in Notes (the pen button). Still to come: the AI clip studio.
+Handwritten notes are in Notes (the pen button), and Clips has ✦ Ideas (pitch, keep, draft a clip).
+Left for later: syncing phone and laptop through nastime.
 
 ---
 
@@ -85,7 +86,8 @@ From then on, `build.bat` offers to push after each build.
 - Read `docs/CS3-DESIGN.md` first, then the "Mistakes this codebase keeps producing" section of
   `docs/CREATOR-STUDIO-3.md`.
 - Browser tests live in `app/tests/browser/` (playwright-core + Chromium; build the preview first).
-  They cover backup, shot ids, the board, board ↔ episode sync, imports, Suggest shots, Week and Paper.
+  They cover backup, shot ids, the board, board ↔ episode and clip sync, imports, Suggest shots, Week,
+  Paper, the sidebar, handwritten notes and clip ideas.
 - `scripts/port-board.py` rebuilds `app/board/board.html` from Storyboard's original file; every change
   made to the canvas is in that script.
 - `npm test` runs every harness, including `checks.test.js`. It checks app identity, script tags,

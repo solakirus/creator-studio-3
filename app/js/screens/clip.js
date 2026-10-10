@@ -391,7 +391,8 @@
         <p class="note">Each beat becomes a shot on whichever shoot day this clip belongs to.</p>`;
 
       el.innerHTML = Screens.bar({ kicker:'Clip', title:TAB_NAME[tab],
-        actions:`<button class="btn-sm" data-a="board">Board</button>
+        actions:`<button class="btn-sm" data-a="aidraft" aria-label="Draft the empty parts of the plan with AI" title="Draft with AI">✦</button>
+                  <button class="btn-sm" data-a="board">Board</button>
                   <button class="btn-sm" data-a="open">Details</button>` }) + `
       <div class="view">
         <div class="cp-head">
@@ -984,6 +985,19 @@
       if(a.dataset.a === 'open'){
         params && params.onEdit && params.onEdit(clip);
         return;
+      }
+
+      /* Draft the plan's empty fields with AI; nothing written is replaced */
+      if(a.dataset.a === 'aidraft'){
+        try {
+          const r = await ClipIdeas.draftInto(clip);
+          if(!r) return;
+          if(!r.filled.length) return U.toast('Everything is already written — nothing to fill');
+          clip.plan = r.plan;
+          await Data.saveClip(clip);
+          await load(); render();
+          return U.toast(`Filled ${r.filled.length} empty part${r.filled.length === 1 ? '' : 's'} of the plan`);
+        } catch(err){ return U.toast(err.message || 'Could not read that answer'); }
       }
 
       /* the clip's own canvas — status follows the clip */

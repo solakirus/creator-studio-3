@@ -1,6 +1,6 @@
 # Creator Studio 3 — design decisions
 
-Status: **for Kris to review.** Steps 1–6 built; step 7 mostly built (see §12). Sections marked ✅ were agreed in chat. Sections marked 🟠 are
+Status: **for Kris to review.** Steps 1–7 built (see §12); nastime sync is the one thing left for later. Sections marked ✅ were agreed in chat. Sections marked 🟠 are
 Claude's recommendation, decided on his behalf so planning could finish — change any of them.
 Nothing has been built yet.
 
@@ -207,7 +207,11 @@ Each step ends with something to install and test on device.
    - ✅ **Handwritten notes** — pen button in Notes (`js/inkpad.js` from the Planner kit +
      `js/screens/ink-note.js`). Ink saved with the note, a picture of it in the list, *Read it* puts the
      words in the note's text.
-   - ⏳ **AI clip studio and Ideas** on the Clip screen — not yet.
+   - ✅ **Clip ideas** (`js/clipideas.js`, `js/screens/clip-ideas.js`) — *✦ Ideas* at the top of
+     Content → Clips: pitch angles (channel, series, your topic) or *Suggest for me*, built from the
+     channel's about/audience/voice, what's already on it and the next three weeks of your days; keep
+     ideas in a backlog; *Draft the clip* makes a clip with its whole plan (hook, flow, CTA, script…).
+     On a clip, **✦** drafts only the empty parts of its plan. Your key or a pasted chat answer.
 8. Later: nastime sync.
 
 ## Open items for Kris

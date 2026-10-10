@@ -255,5 +255,48 @@ Reply with ONLY a JSON array, no prose, no code fences. Each item:
     });
   }
 
-  global.ShotAI = { suggest, forBeat, openSettings, prompt, parse, readImage, MODELS };
+  /* Any text job: with a key it asks Claude directly; without one it shows the
+     prompt to copy into a chat and waits for the pasted answer. Text or null. */
+  async function askText(text, label, maxTokens){
+    const c = await cfg();
+    if(c.key){
+      U.toast(label || 'Asking Claude…');
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', { method:'POST',
+          headers:{ 'content-type':'application/json', 'x-api-key': c.key, 'anthropic-version':'2023-06-01',
+                    'anthropic-dangerous-direct-browser-access':'true' },
+          body: JSON.stringify({ model: c.model || MODELS[0][0], max_tokens: maxTokens || 4000,
+                                 messages:[{ role:'user', content: text }] }) });
+        const j = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error((j.error && j.error.message) || `Claude answered ${res.status}`);
+        return (j.content || []).map(x => x.text || '').join('');
+      } catch(e){ U.toast(e.message || 'Could not reach Claude — paste it instead'); }
+    }
+    return new Promise(resolve => {
+      App.sheet(`
+        <h2>${esc(label || 'Ask Claude')}</h2>
+        <p class="hintline" style="margin:0 0 10px">Copy the prompt into a Claude chat, then paste the whole
+          answer here. (With an API key in Settings → Planning help this happens by itself.)</p>
+        <div class="sheetcta" style="margin:0 0 10px"><button class="btn-primary" data-copy>Copy prompt</button></div>
+        <textarea id="ai-tx" rows="6" placeholder="Paste Claude's answer"
+          style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);
+          color:var(--cream);font-size:14px;padding:10px;outline:none;resize:vertical"></textarea>
+        <div class="sheetcta"><button class="btn-primary" data-ok>Use this answer</button>
+          <button class="btn-ghost" data-cancel>Cancel</button></div>`, sheetEl => {
+        sheetEl.addEventListener('click', async e => {
+          if(e.target.closest('[data-copy]')){
+            try { await navigator.clipboard.writeText(text); U.toast('Prompt copied'); } catch(err){ U.toast('Could not copy'); }
+            return;
+          }
+          if(e.target.closest('[data-cancel]')){ App.closeSheet(); return resolve(null); }
+          if(e.target.closest('[data-ok]')){
+            const a = sheetEl.querySelector('#ai-tx').value.trim();
+            App.closeSheet(); resolve(a || null);
+          }
+        });
+      });
+    });
+  }
+
+  global.ShotAI = { suggest, forBeat, openSettings, prompt, parse, readImage, askText, MODELS };
 })(window);

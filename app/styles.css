@@ -3958,3 +3958,15 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
   background:none;border:0;color:var(--orange);font:inherit;font-size:13.5px;cursor:pointer}
 .ink-open .ink-thumb.big{margin:0}
 .ink-host .ink-page{background:var(--surface-1)}
+
+/* ---------- Clip ideas (Creator Studio 3) ---------- */
+.ci-strip{padding:10px var(--gutter) 0;flex-shrink:0}
+.ci-open{width:100%;padding:11px 12px;border:1px dashed var(--orange);border-radius:var(--r);background:none;
+  color:var(--orange);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.ci-card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-1);padding:12px;margin:0 0 10px}
+.ci-card b{display:block;font-size:16px;color:var(--cream)}
+.ci-card small{display:block;color:var(--muted);font-size:12.5px;margin:2px 0 6px}
+.ci-card p{margin:0 0 6px;font-size:14px;line-height:1.5;color:var(--cream)}
+.ci-card .ci-hook{color:var(--orange-hi)}
+.ci-card .ci-why{color:var(--muted);font-size:13px}
+.ci-acts{display:flex;gap:8px;margin-top:8px}
