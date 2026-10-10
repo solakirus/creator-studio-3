@@ -186,7 +186,15 @@ Each step ends with something to install and test on device.
    chosen still also becomes the shot's reference. Deleting a section only removes it from the board.
    Clips' boards are free canvases for now (a clip's plan beats aren't shots yet).
    Fixed on the way: Storyboard's shot-card header ran ~180px past the card's edge.
-6. **Importers** for Storyboard export and Planner plan packs (and v2, per §9).
+6. **Importers** ✅ Built.
+   - **Creator Studio v2** → Settings → *Restore from backup* (v2's own Export everything file).
+   - **Storyboard** → Content → Boards → *Import a board or backup* (Storyboard's Export everything
+     file). Storyboard's own importer already re-ids everything; on top of it, a board an episode was
+     linked to in v2 (`boardId`), or one named exactly like an episode or clip, is folded into that
+     video's board with its status and due date. Everything else arrives as one "(imported)" board.
+   - **Laptop Planner** → Settings → *Open a plan pack* (its *Send to phone* file). `planpack.js` from
+     the Planner kit, unchanged except that shot names land in `text`. Safe to open twice; never
+     touches a tick.
 7. **Planner features** (§3): Week board, Suggest shots, Paper, handwriting, AI clip studio.
 8. Later: nastime sync.
 

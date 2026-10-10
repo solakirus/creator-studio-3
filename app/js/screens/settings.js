@@ -117,6 +117,7 @@
       <div class="group">
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
         ${row(D.down,'Restore from backup','A Creator Studio JSON file','data-go="restore"')}
+        ${row(D.down,'Open a plan pack','From the laptop Planner or the Reference Library — safe to open twice','data-go="planpack"')}
         ${row(D.up,'Export everything','Every record and picture — for the other device or a new phone','data-go="backup"')}
         ${row(D.up,'Export as spreadsheets','CSV files that open in Notion or Sheets','data-go="csvout"')}
         ${row(D.grid,'Load sample content','Meals, series and clips to try things out','data-go="samples"')}
@@ -229,6 +230,7 @@
       if(go.dataset.go === 'samples')   return openSamples();
       if(go.dataset.go === 'csv')       return openCsvImport();
       if(go.dataset.go === 'restore')   return openRestore();
+      if(go.dataset.go === 'planpack')  return openPlanPack();
       if(go.dataset.go === 'backup')    return doBackup();
       if(go.dataset.go === 'csvout')    return doSheets();
 
@@ -724,6 +726,39 @@
           App.closeSheet();
           if(ok) U.toast(`Exported ${st.records || 0} records${photos ? ` and ${st.blobs || 0} pictures` : ''}`);
         } catch(err){ console.error(err); U.toast('Export failed'); go.disabled = false; go.textContent = 'Export'; }
+      });
+    });
+  }
+
+  /* ---------- plan pack ----------
+     The planning side owns the plan, this app owns progress: opening a newer
+     pack rewrites titles, dates, shots and angles and never touches a tick. */
+  async function openPlanPack(){
+    const text = await Transfer.pickFile('application/json,.json');
+    if(!text) return;
+    let pack, sum;
+    try { pack = JSON.parse(text); sum = await PlanPack.preview(pack); }
+    catch(err){ console.error(err); return U.toast(err.message || 'That file could not be read'); }
+    const line = PlanPack.describe(sum);
+    App.sheet(`
+      <h2>Open plan pack</h2>
+      <p style="margin:0 0 10px;color:var(--cream);font-size:16px">${line}</p>
+      ${(sum.keptWithWork || []).length ? `<p style="margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.5">
+        Kept because something was already done on them: ${sum.keptWithWork.slice(0, 6).join(', ')}${sum.keptWithWork.length > 6 ? '…' : ''}</p>` : ''}
+      ${(sum.warnings || []).length ? `<p style="margin:0 0 10px;color:var(--amber);font-size:14px;line-height:1.5">${sum.warnings.slice(0, 4).join('<br>')}</p>` : ''}
+      <p style="margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.5">Ticks and progress here are never changed.</p>
+      <div class="sheetcta">
+        <button class="btn-primary" data-go ${sum.nothingToDo ? 'disabled' : ''}>${sum.nothingToDo ? 'Nothing to change' : 'Bring it in'}</button>
+        <button class="btn-ghost" data-cancel>Cancel</button>
+      </div>`, sheetEl => {
+      sheetEl.addEventListener('click', async e => {
+        if(e.target.closest('[data-cancel]')) return App.closeSheet();
+        if(!e.target.closest('[data-go]')) return;
+        try {
+          const done = await PlanPack.apply(pack);
+          App.closeSheet();
+          U.toast(PlanPack.describe(done));
+        } catch(err){ console.error(err); U.toast(err.message || 'Could not bring that in'); }
       });
     });
   }

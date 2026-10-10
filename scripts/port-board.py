@@ -299,6 +299,60 @@ rep(""":root[data-cs3] #themeBtn{display:none}""", """:root[data-cs3] #themeBtn{
 .cs3-prog.part{color:#E8A33D;border-color:#E8A33D}
 .cs3-prog.done{color:#5BBE6A;border-color:#5BBE6A}""")
 
+# --- importing a Storyboard backup: boards that belong to an episode or clip join its board
+rep("""      add(n);
+    });
+    if (!roots.length) { renderBoard(); toast('Templates imported.'); return; }""", """      add(n);
+    });
+    const joined = await cs3JoinImported(d.items, map);
+    if (joined) setTimeout(() => toast(`${joined} ${joined === 1 ? 'board' : 'boards'} joined ${joined === 1 ? 'its episode or clip' : 'their episodes and clips'} — find them in Videos.`), 2600);
+    if (!roots.length) { renderBoard(); toast('Templates imported.'); return; }""")
+rep("""(async function init() {""", r"""/* ---------- Creator Studio 3: bringing Storyboard boards home ----------
+   After a Storyboard backup is imported, a board that was linked to an
+   episode in Creator Studio v2 (the episode kept its id as boardId), or that
+   has the same name as an episode or clip, is folded into that video's own
+   board: its cards, lines, ink and sub-boards move across, below anything
+   already there. The rest stay where the import put them. */
+async function cs3JoinImported(oldItems, map) {
+  const P = cs3Parent(); if (!P || !P.Store) return 0;
+  let vl = [], cl = [];
+  try { [vl, cl] = await Promise.all([P.Store.all('vlogs').then(r => r.values), P.Store.all('clips').then(r => r.values)]); } catch (e) { return 0; }
+  const norm = s => String(s || '').replace(/\s*\(imported\)\s*$/i, '').trim().toLowerCase();
+  let joined = 0;
+  for (const it of oldItems) {
+    if (!it || it.kind !== 'board' || it.isFolder || !it.parent || it.parent === TPL_PARENT) continue;
+    const nb = state.items.get(map[it.id]); if (!nb) continue;
+    const v = vl.find(x => x.boardId === it.id) || vl.find(x => norm(x.title) && norm(x.title) === norm(it.name));
+    const c = v ? null : cl.find(x => norm(x.title) && norm(x.title) === norm(it.name));
+    if (!v && !c) continue;
+    const type = v ? 'vlog' : 'clip', src = v || c;
+    const bid = ensureVideoBoard(type, src.id, { name: src.title || it.name,
+      status: c && P.BoardLink ? P.BoardLink.statusFor(c.stage) : '' });
+    if (!bid || bid === nb.id) continue;
+    const vb = state.items.get(bid);
+    if (v && nb.status && nb.status !== 'folder' && (!vb.status || vb.status === 'idea')) { vb.status = nb.status; }
+    if (nb.due && !vb.due) vb.due = nb.due;
+    save(vb, true);
+    const existing = cardsOf(bid);
+    const dy = existing.length ? Math.max(...existing.map(e => e.y + (e.type === 'frame' ? (e.h || 380) : 400))) + 120 : 0;
+    all().filter(x => x.board === nb.id).forEach(x => {
+      x.board = bid;
+      if (x.kind === 'card') x.y += dy;
+      else if (x.kind === 'conn') { if (x.fy != null) x.fy += dy; if (x.ty != null) x.ty += dy; }
+      else if (x.kind === 'stroke') x.pts = (x.pts || []).map(([px, py]) => [px, py + dy]);
+      save(x, true);
+    });
+    all().filter(x => x.kind === 'board' && x.parent === nb.id).forEach(x => { x.parent = bid; save(x, true); });
+    all().filter(x => x.kind === 'card' && (x.type === 'board' || x.type === 'step') && x.data && x.data.child === nb.id)
+      .forEach(x => { x.data.child = bid; save(x, true); });
+    remove(nb.id);
+    joined++;
+  }
+  return joined;
+}
+
+(async function init() {""")
+
 # --- open the board the app asks for: #board=<id>, or #video=<type>:<id>&name=…&status=…&due=…
 rep("""  openBoard(root.id);
   try { if (localStorage.getItem('storyboard-side') === '1' && !isNarrow()) setSide(true); } catch (e) {}""",
