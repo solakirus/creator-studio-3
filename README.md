@@ -8,6 +8,7 @@ untouched.
 own identity on Android and Windows, a backup that covers everything, permanent shot ids, the
 canvas built in (episode and clip boards, Content → Boards), episode shots ↔ board cards with the
 stills picker, importers for v2 / Storyboard / Planner, Suggest shots, the week board and Paper.
+Also: the laptop sidebar, board fonts that work offline, and clip boards that follow the clip's flow.
 Still to come: handwritten notes in Notes, and the AI clip studio.
 
 ---
@@ -44,7 +45,7 @@ After that, `build.bat` is the whole loop. It also saves each build as a git com
 - [ ] Month tab opens on **Week**; drag a task to another day.
 - [ ] Open an episode → **Board**: its sequences are sections, its shots are cards. Edit one and check
       the episode.
-- The laptop still shows the phone's bottom tab bar, stretched wide; a sidebar is still to do.
+- [ ] The tabs are a sidebar on the left; Tools opens beside it.
 
 ## Bring your data in
 

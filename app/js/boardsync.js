@@ -240,6 +240,48 @@
     } catch(e){ return /^https?:/.test(url) ? url : null; }
   }
 
+  /* ---------------------------------------------------------- clips
+
+     A clip's plan has a flow: an ordered list of lines (clip.plan.beats —
+     plain text, no ids). On a clip's board the flow is one section and each
+     line a shot card, matched by position. The board is the only other place
+     that edits it, so position is enough; every write re-reads the clip. */
+  async function clipRec(video){
+    if(!video || video.type !== 'clip') return null;
+    try { return await Store.get('clips', video.id); } catch(e){ return null; }
+  }
+  async function writeClip(video, fn){
+    return run(async () => {
+      const c = await clipRec(video);
+      if(!c) return null;
+      c.plan = c.plan || {};
+      c.plan.beats = Array.isArray(c.plan.beats) ? c.plan.beats : [];
+      const out = await fn(c.plan.beats, c);
+      if(out === false) return false;
+      await Data.saveClip(c);
+      changed();
+      return out === undefined ? true : out;
+    });
+  }
+  async function clipModel(video){
+    const c = await clipRec(video);
+    if(!c) return null;
+    const lines = ((c.plan && c.plan.beats) || []).map(x => String(x || ''));
+    return { id: c.id, title: c.title || 'Untitled clip', lines };
+  }
+  const clipSetLine = (video, i, text) => writeClip(video, b => { if(i < 0 || i >= b.length || b[i] === text) return false; b[i] = text; });
+  const clipAddLine = (video, text) => writeClip(video, b => { b.push(text || ''); return b.length - 1; });
+  const clipRemoveLine = (video, i) => writeClip(video, b => { if(i < 0 || i >= b.length) return false; b.splice(i, 1); });
+  const clipInsertLine = (video, i, text) => writeClip(video, b => { const at = Math.max(0, Math.min(i, b.length)); b.splice(at, 0, text || ''); return at; });
+  /* order: the old positions, in their new order; lines not named keep their place after */
+  const clipReorder = (video, order) => writeClip(video, b => {
+    const seen = new Set(order);
+    const next = [...order.filter(i => i >= 0 && i < b.length).map(i => b[i]), ...b.filter((_, i) => !seen.has(i))];
+    if(next.join('\u0000') === b.join('\u0000')) return false;
+    b.splice(0, b.length, ...next);
+  });
+
   global.BoardSync = { model, saveShot, addShot, moveShot, reorder, renameBeat, removeShot,
-                       setStill, stillData, onChange, toCam, fromCam };
+                       setStill, stillData, onChange, toCam, fromCam,
+                       clipModel, clipSetLine, clipAddLine, clipRemoveLine, clipInsertLine, clipReorder };
 })(window);

@@ -184,7 +184,8 @@ Each step ends with something to install and test on device.
    Shoot mode (Not shot · 1/2 angles · In the can). Image boxes open the **stills picker**: Reference
    Library folders and framings, one still at a time, swipe or arrows, filmstrip, "From files…"; the
    chosen still also becomes the shot's reference. Deleting a section only removes it from the board.
-   Clips' boards are free canvases for now (a clip's plan beats aren't shots yet).
+   **Clip boards** follow the same idea for a clip's flow (its plan lines): one *Flow* section, a card per
+   line; edits, left-to-right order, new cards and deletes (with Undo) go back to the clip.
    Fixed on the way: Storyboard's shot-card header ran ~180px past the card's edge.
 6. **Importers** ✅ Built.
    - **Creator Studio v2** → Settings → *Restore from backup* (v2's own Export everything file).

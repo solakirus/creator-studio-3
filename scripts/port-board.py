@@ -379,6 +379,121 @@ rep(""":root[data-cs3] #themeBtn{display:none}""", """:root[data-cs3] #themeBtn{
 .cs3-suggest{position:absolute;top:10px;right:12px;font:inherit;font-size:12.5px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .cs3-suggest:hover{border-color:var(--slate);color:var(--slate)}""")
 
+# --- a clip's board: its flow is a section, each line a shot card
+rep("""function cs3AfterOpen(id) { if (cs3Video(id)) cs3Pull(id); }""",
+    """function cs3AfterOpen(id) { if (cs3Video(id)) cs3Pull(id); else if (cs3Clip(id)) cs3PullClip(id); }""")
+rep("""function cs3Changed(item) {
+  if (cs3Pulling || !item || item.kind !== 'card' || !cs3Video(item.board)) return;""",
+"""function cs3Changed(item) {
+  if (cs3Pulling || !item || item.kind !== 'card') return;
+  if (cs3Clip(item.board)) { cs3ClipDirty.add(item.id); clearTimeout(cs3CT); cs3CT = setTimeout(cs3PushClip, 500); return; }
+  if (!cs3Video(item.board)) return;""")
+rep("""function cs3Deleting(ids) {
+  const api = cs3Api(); if (!api) return;""", """function cs3Deleting(ids) {
+  const api = cs3Api(); if (!api) return;
+  if (ids.length && state.items.get(ids[0]) && cs3Clip(state.items.get(ids[0]).board)) return cs3DeletingClip(ids);""")
+rep("""window.CS3Sync = { pull: cs3Pull, push: cs3Push, frameOfCard };""", r"""/* ---------- Creator Studio 3: a clip's board is its flow ----------
+   The clip's plan flow (its lines, in order) is one section — data.flow —
+   and each line a shot card holding data.line, its position. Edit a card and
+   the line changes; drag along the row and the flow reorders; type a new card
+   into the section and a line is added; delete a card and the line goes (Undo
+   puts it back where it was). Lines have no ids, so position is the link. */
+const cs3Clip = boardId => { const b = state.items.get(boardId); return b && b.video && b.video.type === 'clip' ? b.video : null; };
+const flowFrameOf = boardId => cardsOf(boardId).find(c => c.type === 'frame' && c.data && c.data.flow) || null;
+function inFlow(c, f) {
+  if (!f) return false;
+  const cx = c.x + (c.w || CS3.SHOT_W) / 2, cy = c.y + 40;
+  return cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + (f.h || 380);
+}
+async function cs3PullClip(boardId) {
+  const api = cs3Api(), video = cs3Clip(boardId); if (!api || !video || !api.clipModel) return;
+  let m; try { m = await api.clipModel(video); } catch (e) { return; }
+  if (!m || state.board !== boardId) return;
+  cs3Pulling = true;
+  try {
+    const cards = cardsOf(boardId);
+    let f = flowFrameOf(boardId);
+    if (!f) {
+      let y = cards.length ? Math.max(...cards.map(c => c.y + (c.type === 'frame' ? (c.h || 380) : 360))) + 80 : 0;
+      y = Math.ceil(y / GRID) * GRID;
+      const width = CS3.PAD * 2 + Math.max(3, m.lines.length) * (CS3.SHOT_W + CS3.GAP) - CS3.GAP;
+      f = mk(boardId, 'frame', 0, y, { title: 'Flow', flow: true }, width);
+      f.h = CS3.ROW_H; save(f, true);
+    }
+    const byLine = new Map(cards.filter(c => c.type === 'shot' && c.data.line != null).map(c => [c.data.line, c]));
+    m.lines.forEach((text, i) => {
+      let c = byLine.get(i);
+      if (!c) {
+        const row = cardsOf(boardId).filter(x => x.type === 'shot' && inFlow(x, f));
+        const x = row.length ? Math.max(...row.map(r => r.x + r.w)) + CS3.GAP : f.x + CS3.PAD;
+        c = mk(boardId, 'shot', x, f.y + CS3.HEAD, { num: String(i + 1), dur: '', cam: '', desc: text, vo: '', trans: '', must: false, line: i }, CS3.SHOT_W);
+        if (x + CS3.SHOT_W + CS3.PAD > f.x + f.w) { f.w = x + CS3.SHOT_W + CS3.PAD - f.x; save(f, true); }
+      } else {
+        const el = cardEl(c.id), focused = !!(el && el.contains(document.activeElement));
+        let ch = false;
+        if (!focused && (c.data.desc || '') !== text) { c.data.desc = text; ch = true; }
+        if (c.data.num !== String(i + 1)) { c.data.num = String(i + 1); ch = true; }
+        if (ch) save(c, true);
+      }
+    });
+    byLine.forEach((c, i) => { if (i >= m.lines.length) { delete c.data.line; save(c, true); } });
+  } finally { cs3Pulling = false; }
+  if (state.board === boardId) { renderBoard(); resetHistory(); }
+}
+const cs3ClipDirty = new Set(); let cs3CT;
+async function cs3PushClip() {
+  const api = cs3Api(); if (!api || !api.clipModel) return;
+  const ids = [...cs3ClipDirty]; cs3ClipDirty.clear();
+  const boards = new Set();
+  for (const id of ids) {
+    const c = state.items.get(id); if (!c || c.type !== 'shot') continue;
+    const video = cs3Clip(c.board); if (!video) continue;
+    const f = flowFrameOf(c.board);
+    try {
+      if (c.data.restoreLine) {
+        const r = c.data.restoreLine; delete c.data.restoreLine;
+        const at = await api.clipInsertLine(video, r.i, c.data.desc || r.text);
+        cardsOf(c.board).forEach(x => { if (x !== c && x.data.line != null && x.data.line >= at) { x.data.line++; cs3Quiet(x); } });
+        c.data.line = at; cs3Quiet(c);
+      } else if (c.data.line != null) {
+        await api.clipSetLine(video, c.data.line, c.data.desc || '');
+      } else if (inFlow(c, f) && (c.data.desc || '').trim()) {
+        const at = await api.clipAddLine(video, c.data.desc);
+        if (at !== null && at !== false) { c.data.line = at; cs3Quiet(c); }
+      }
+      boards.add(c.board);
+    } catch (e) { console.warn('Board sync (clip): could not save', e); }
+  }
+  for (const board of boards) {
+    const video = cs3Clip(board), f = flowFrameOf(board);
+    const row = cardsOf(board).filter(x => x.type === 'shot' && x.data.line != null && inFlow(x, f)).sort((a, b) => (a.x - b.x) || (a.y - b.y));
+    const order = row.map(x => x.data.line);
+    if (order.every((v, i) => v === i)) continue;
+    try { await api.clipReorder(video, order); } catch (e) { continue; }
+    row.forEach((x, i) => { x.data.line = i; x.data.num = String(i + 1); cs3Quiet(x); cs3Rebuild(x); });
+  }
+}
+function cs3DeletingClip(ids) {
+  const api = cs3Api(); if (!api) return;
+  const gone = ids.map(id => state.items.get(id)).filter(c => c && c.type === 'shot' && c.data.line != null)
+    .sort((a, b) => b.data.line - a.data.line);
+  if (!gone.length) return;
+  const video = cs3Clip(gone[0].board), board = gone[0].board;
+  /* Done at once, before the board copies the cards for its Undo: the copies
+     must remember where their line was, not point at a position another line
+     is about to move into. */
+  const removed = [];
+  for (const c of gone) {
+    const i = c.data.line;
+    c.data.restoreLine = { i, text: c.data.desc || '' };
+    delete c.data.line;
+    removed.push(i);
+    cardsOf(board).forEach(x => { if (x !== c && !gone.includes(x) && x.data.line != null && x.data.line > i) { x.data.line--; x.data.num = String(x.data.line + 1); cs3Quiet(x); } });
+  }
+  (async () => { for (const i of removed) await api.clipRemoveLine(video, i); })();
+}
+window.CS3Sync = { pull: cs3Pull, push: cs3Push, frameOfCard, pullClip: cs3PullClip };""")
+
 # --- open the board the app asks for: #board=<id>, or #video=<type>:<id>&name=…&status=…&due=…
 rep("""  openBoard(root.id);
   try { if (localStorage.getItem('storyboard-side') === '1' && !isNarrow()) setSide(true); } catch (e) {}""",
