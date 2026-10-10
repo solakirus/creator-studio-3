@@ -70,5 +70,10 @@ const routeTargets = [...routes.matchAll(/:\s*'([\w-]+)'/g)].map(m => m[1]);
 const deadRoute = routeTargets.filter(r => !registered.has(r));
 ok(!deadRoute.length, 'every route opens a registered screen', deadRoute.join(' '));
 
+console.log('\nbackup covers every store');
+const tr = src['js/transfer.js'];
+ok(!/RECORD_STORES\s*=\s*\[/.test(tr), 'no hand-kept store list in transfer.js');
+ok(/objectStoreNames/.test(tr), 'store list read from the database itself');
+
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks pass');
 process.exit(fails ? 1 : 0);

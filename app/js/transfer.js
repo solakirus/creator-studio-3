@@ -1,53 +1,171 @@
 /* Backup and import. JSON round-trips the whole database; CSV brings in
-   lists from elsewhere. Photos and voice notes stay on the device — they
-   would bloat a backup into something you can't email. */
-(function(global){
-  /* every store that holds records rather than binary */
-  const RECORD_STORES = ['tasks','series','clips','meals','templates','planner','grocery',
-                         'pantry','prep','sessions','swipes','refs','journal',
-                         /* episodes and the challenge months they belong to */
-                         'vlogs','months',
-                         /* the research library and the quarters it was gathered for */
-                         'sources','quarters',
-                         /* series videos and program plans */
-                         'videos','plans'];
-  const KEYED_STORES  = ['settings'];   /* key/value, needs its keys preserved */
+   lists from elsewhere.
 
-  async function exportAll(){
-    const out = { format:'creator-studio', version:1, exportedAt:new Date().toISOString(), data:{}, keyed:{} };
-    for(const s of RECORD_STORES){
-      try { const { values } = await Store.all(s); out.data[s] = values; }
-      catch(e){ out.data[s] = []; }
+   A backup covers every store the database has — not a hand-kept list, which
+   is how the old backup came to hold 19 of 50 stores and silently drop
+   episodes, quarters, months and every image. Pictures and voice notes are
+   written into the file as base64, unless you ask for a backup without them.
+
+   File shape (version 2):
+     { format:'creator-studio', version:2, app, exportedAt, photos:true|false,
+       data:  { <store with its own id>: [record, …] },
+       keyed: { <store keyed from outside>: [[key, value], …] } }
+   A Blob anywhere inside becomes { __blob:<type>, b64:<data> } and a Date
+   becomes { __date:<iso> }. Version 1 files (Creator Studio v2) still restore. */
+(function(global){
+  const FORMAT = 'creator-studio';
+  const VERSION = 2;
+
+  /* What a store is keyed by, read from the database itself so a store added
+     later is covered without anyone remembering to list it. */
+  async function layout(){
+    const d = await Store.db();
+    const out = {};
+    const names = [...d.objectStoreNames];
+    if(!names.length) return out;
+    const t = d.transaction(names, 'readonly');
+    names.forEach(n => { out[n] = t.objectStore(n).keyPath || null; });
+    return out;
+  }
+
+  function blobToB64(blob){
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1] || '');
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(blob);
+    });
+  }
+  function b64ToBlob(b64, type){
+    const bin = atob(b64 || '');
+    const bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: type || 'application/octet-stream' });
+  }
+
+  /* Turn a stored value into something JSON can hold. `stats` counts the
+     pictures so the export can say what it wrote. */
+  async function encode(v, photos, stats){
+    if(v === null || typeof v !== 'object') return v;
+    if(typeof Blob !== 'undefined' && v instanceof Blob){
+      if(!photos){ stats.dropped++; return undefined; }
+      stats.blobs++; stats.bytes += v.size;
+      return { __blob: v.type || 'application/octet-stream', b64: await blobToB64(v) };
     }
-    for(const s of KEYED_STORES){
-      try {
-        const { keys, values } = await Store.all(s);
-        out.keyed[s] = keys.map((k,i) => [k, values[i]]);
-      } catch(e){ out.keyed[s] = []; }
+    if(v instanceof Date) return { __date: v.toISOString() };
+    if(v instanceof ArrayBuffer) return encode(new Blob([v]), photos, stats);
+    if(ArrayBuffer.isView(v)) return encode(new Blob([v]), photos, stats);
+    if(Array.isArray(v)){
+      const out = [];
+      for(const x of v) out.push(await encode(x, photos, stats));
+      return out;
+    }
+    const out = {};
+    for(const [k, x] of Object.entries(v)){
+      const e = await encode(x, photos, stats);
+      if(e !== undefined) out[k] = e;
     }
     return out;
   }
 
-  async function importAll(obj, mode){
-    if(!obj || obj.format !== 'creator-studio') throw new Error('Not a Creator Studio backup');
-    if(mode === 'replace'){
-      /* Only clear what the backup actually carries. A backup made before a store
-         was added has no entry for it, and replacing with that file must not wipe
-         it — that is how restoring an older backup would lose every episode. */
-      for(const s of RECORD_STORES) if(Array.isArray((obj.data || {})[s])) await Store.clear(s);
-      for(const s of KEYED_STORES)  if(Array.isArray((obj.keyed || {})[s])) await Store.clear(s);
+  function decode(v, stats){
+    if(v === null || typeof v !== 'object') return v;
+    if(Array.isArray(v)) return v.map(x => decode(x, stats));
+    if(typeof v.__blob === 'string' && typeof v.b64 === 'string'){
+      if(stats) stats.blobs++;
+      return b64ToBlob(v.b64, v.__blob);
     }
-    let n = 0;
+    if(typeof v.__date === 'string' && Object.keys(v).length === 1) return new Date(v.__date);
+    const out = {};
+    for(const [k, x] of Object.entries(v)) out[k] = decode(x, stats);
+    return out;
+  }
+
+  /* opts.photos — false leaves pictures and voice notes out (a small file) */
+  async function exportAll(opts){
+    const photos = !opts || opts.photos !== false;
+    const stats = { blobs:0, bytes:0, dropped:0, records:0 };
+    const out = { format:FORMAT, version:VERSION, app:'creator-studio-3',
+                  exportedAt:new Date().toISOString(), photos, data:{}, keyed:{} };
+    const shape = await layout();
+    for(const [s, keyPath] of Object.entries(shape)){
+      let got;
+      try { got = await Store.all(s); } catch(e){ console.warn('Could not read', s, e); continue; }
+      if(keyPath){
+        const rows = [];
+        for(const v of got.values){
+          const e = await encode(v, photos, stats);
+          if(e !== undefined){ rows.push(e); stats.records++; }
+        }
+        out.data[s] = rows;
+      } else {
+        const pairs = [];
+        for(let i = 0; i < got.keys.length; i++){
+          const e = await encode(got.values[i], photos, stats);
+          if(e === undefined) continue;          /* a picture left out on purpose */
+          pairs.push([got.keys[i], e]); stats.records++;
+        }
+        out.keyed[s] = pairs;
+      }
+    }
+    out.stats = stats;
+    return out;
+  }
+
+  /* One transaction per store: an import of a few thousand records takes a
+     second instead of a minute. */
+  async function putMany(store, items, keyed){
+    if(!items.length) return 0;
+    const d = await Store.db();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, 'readwrite');
+      const st = t.objectStore(store);
+      items.forEach(it => keyed ? st.put(it[1], it[0]) : st.put(it));
+      t.oncomplete = () => res(items.length);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error || new Error('Import of ' + store + ' was aborted'));
+    });
+  }
+
+  /* mode 'merge' adds and overwrites by id; 'replace' clears each store the
+     backup carries first. A store the file doesn't mention is never touched —
+     restoring an older backup must not wipe what it never had. */
+  async function importAll(obj, mode){
+    if(!obj || obj.format !== FORMAT) throw new Error('Not a Creator Studio backup');
+    if((obj.version || 1) > VERSION) throw new Error('That backup is from a newer version of the app');
+    const shape = await layout();
+    const report = { records:0, photos:0, skipped:[] };
+    const stats = { blobs:0 };
+
+    const plan = [];
     for(const [s, rows] of Object.entries(obj.data || {})){
-      if(!RECORD_STORES.includes(s)) continue;
-      for(const r of rows){ await Store.put(s, r); n++; }
+      if(!(s in shape)){ report.skipped.push(s); continue; }
+      if(!Array.isArray(rows)) continue;
+      const kp = shape[s];
+      if(kp){
+        const ok = rows.map(r => decode(r, stats)).filter(r => r && r[kp] !== undefined && r[kp] !== null);
+        plan.push([s, ok, false]);
+      } else {
+        /* a version 1 file has no out-of-line stores in data, but be forgiving */
+        plan.push([s, rows.filter(r => Array.isArray(r) && r.length === 2).map(r => [r[0], decode(r[1], stats)]), true]);
+      }
     }
     for(const [s, pairs] of Object.entries(obj.keyed || {})){
-      if(!KEYED_STORES.includes(s)) continue;
-      for(const [k,v] of pairs){ await Store.put(s, v, k); n++; }
+      if(!(s in shape)){ report.skipped.push(s); continue; }
+      if(!Array.isArray(pairs)) continue;
+      const kp = shape[s];
+      const items = pairs.filter(p => Array.isArray(p) && p.length === 2).map(p => [p[0], decode(p[1], stats)]);
+      if(kp) plan.push([s, items.map(p => p[1]).filter(v => v && v[kp] !== undefined), false]);
+      else plan.push([s, items, true]);
     }
-    return n;
+
+    if(mode === 'replace') for(const [s] of plan) await Store.clear(s);
+    for(const [s, items, keyed] of plan) report.records += await putMany(s, items, keyed);
+    report.photos = stats.blobs;
+    lastReport = report;
+    return report.records;
   }
+  let lastReport = null;
 
   /* Routed through Saver, which writes a real file and opens the share sheet on
      device — a Blob download alone silently does nothing in a WebView. */
@@ -246,5 +364,6 @@
     }
   };
 
-  global.Transfer = { exportAll, importAll, download, pickFile, toObjects, IMPORTERS };
+  global.Transfer = { exportAll, importAll, download, pickFile, toObjects, IMPORTERS,
+                      report: () => lastReport, encode, decode, VERSION };
 })(window);

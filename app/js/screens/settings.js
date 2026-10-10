@@ -117,7 +117,7 @@
       <div class="group">
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
         ${row(D.down,'Restore from backup','A Creator Studio JSON file','data-go="restore"')}
-        ${row(D.up,'Export everything','JSON backup — for moving to a new phone','data-go="backup"')}
+        ${row(D.up,'Export everything','Every record and picture — for the other device or a new phone','data-go="backup"')}
         ${row(D.up,'Export as spreadsheets','CSV files that open in Notion or Sheets','data-go="csvout"')}
         ${row(D.grid,'Load sample content','Meals, series and clips to try things out','data-go="samples"')}
         <button class="row" data-go="wipe"><svg class="ic" style="color:var(--red)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${D.trash}"/></svg>
@@ -686,24 +686,54 @@
   }
 
   /* ---------- backup ---------- */
-  async function doBackup(){
-    try {
-      const obj = await Transfer.exportAll();
-      const counts = Object.entries(obj.data).filter(([,v]) => v.length)
-        .map(([k,v]) => `${v.length} ${k}`).join(', ') || 'nothing yet';
-      const d = new Date();
-      const name = `creator-studio-3-${d.getFullYear()}-${U.pad(d.getMonth()+1)}-${U.pad(d.getDate())}.json`;
-      const ok = await Transfer.download(name, JSON.stringify(obj, null, 2), 'application/json');
-      if(ok) U.toast(`Exported ${counts}`);
-    } catch(e){ console.error(e); U.toast('Export failed'); }
+  /* Everything, every store. Photos make the file big, so leaving them out is
+     offered — but never the default, because a backup without them is the one
+     you regret. */
+  function doBackup(){
+    App.sheet(`
+      <h2>Export everything</h2>
+      <p style="margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.6">
+        One file with every record in the app — episodes, quarters, months, workouts, meals, references.
+        Restore it on another phone or the laptop with <b>Restore from backup</b>.</p>
+      <div class="field"><label>Pictures and voice notes</label><div class="opts" data-group="setphotos">
+        <button type="button" class="opt" data-v="with" aria-pressed="true">Include them</button>
+        <button type="button" class="opt" data-v="without" aria-pressed="false">Leave them out</button>
+      </div></div>
+      <div class="sheetcta">
+        <button class="btn-primary" data-go>Export</button>
+        <button class="btn-ghost" data-cancel>Cancel</button>
+      </div>`, sheetEl => {
+      sheetEl.addEventListener('click', async e => {
+        const opt = e.target.closest('.opt');
+        if(opt){
+          opt.closest('.opts').querySelectorAll('.opt').forEach(o => o.setAttribute('aria-pressed','false'));
+          opt.setAttribute('aria-pressed','true'); return;
+        }
+        if(e.target.closest('[data-cancel]')) return App.closeSheet();
+        const go = e.target.closest('[data-go]');
+        if(!go || go.disabled) return;
+        const photos = sheetEl.querySelector('[data-group="setphotos"] .opt[aria-pressed="true"]').dataset.v === 'with';
+        go.disabled = true; go.textContent = 'Packing…';
+        try {
+          const obj = await Transfer.exportAll({ photos });
+          const st = obj.stats || {};
+          delete obj.stats;
+          const d = new Date();
+          const name = `creator-studio-3-${d.getFullYear()}-${U.pad(d.getMonth()+1)}-${U.pad(d.getDate())}${photos ? '' : '-no-photos'}.json`;
+          const ok = await Transfer.download(name, JSON.stringify(obj), 'application/json');
+          App.closeSheet();
+          if(ok) U.toast(`Exported ${st.records || 0} records${photos ? ` and ${st.blobs || 0} pictures` : ''}`);
+        } catch(err){ console.error(err); U.toast('Export failed'); go.disabled = false; go.textContent = 'Export'; }
+      });
+    });
   }
 
   function openRestore(){
     App.sheet(`
       <h2>Restore from backup</h2>
       <p style="margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.6">
-        Pick a Creator Studio JSON file. Photos and voice notes are not in a backup — those stay on
-        the device they were added to.</p>
+        Pick a Creator Studio JSON file — from Creator Studio 3, or a backup made in Creator Studio v2.
+        Pictures come along if the backup has them.</p>
       <div class="field"><label>How to bring it in</label><div class="opts" data-group="setmode">
         <button type="button" class="opt" data-v="merge" aria-pressed="true">Add to what's here</button>
         <button type="button" class="opt" data-v="replace" aria-pressed="false">Replace everything</button>
@@ -725,9 +755,10 @@
         if(!text) return;
         try {
           const n = await Transfer.importAll(JSON.parse(text), mode);
+          const rep = Transfer.report() || {};
           Data.invalidate(); Nutrition.invalidate(); Channels.invalidate();
           App.closeSheet();
-          U.toast(`Restored ${n} records`);
+          U.toast(`Restored ${n} records${rep.photos ? ` and ${rep.photos} pictures` : ''}`);
           setTimeout(() => location.reload(), 700);
         } catch(err){ console.error(err); U.toast(err.message || 'That file could not be read'); }
       });

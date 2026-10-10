@@ -157,7 +157,9 @@ Each step ends with something to install and test on device.
 
 1. **Shell.** ✅ Built. v2 copied into the new repo, identity renamed (§2), Electron + bridge (§10),
    Android project copied from v2 by script. CS3 runs identical to v2, with its own empty database.
-2. **Export/Import fixed** to cover every store (§8).
+2. **Export/Import fixed** ✅ Built. Every store, read from the database itself; pictures and voice
+   notes included (or left out on request); v2 backups still restore. The same `app/js/transfer.js`
+   dropped into v2 would give v2 the full backup too (§9 option a) — one file, no other change.
 3. **Shot store** (§5): migrate task and beat shots to one shape with ids and angles.
 4. **Board.** Port the canvas into the Episode/Clip Board view and Content → Boards, scoped CSS.
 5. **Shots ↔ Board** two-way: sections = actions, shot cards = shot records, stills picker.
