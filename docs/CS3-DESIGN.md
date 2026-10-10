@@ -61,13 +61,19 @@ Where the merged features land:
 - Episode shots: `vlog.acts[].beats[].shots[i]` with a single `framing` string and one `done`, no angles.
 - Both are addressed by array position (`task:<id>:<i>`), so a canvas card can't point at one safely.
 
-**Decision:** one shot shape, in its own store, with a permanent id.
+**Decision (revised while building step 3):** shots **stay where they live** — on the task or the
+sequence — and every shot and angle gets a permanent `id` (`app/js/shotids.js`). Moving them into a
+store of their own would have meant rewriting 123 places in 23 files that read `.shots`; giving them
+ids gets the same thing — a board card can point at a shot and find it after any reorder — with no
+screen changed. A card keeps a `ref`: `{type:'task', owner, id}` or `{type:'beat', owner, vlog, id}`,
+and `Shots.find / update / twin` resolve it.
 
-```
-shots: { id, owner:{type:'task'|'beat'|'clip', id}, action, order,
-         name, location, note, refs:[refId], angles:[{id,type,angle,movement,cam,done}],
-         vo, trans, dur, must, updatedAt }
-```
+- A sequence sent to the task list is copied onto the shoot task (that's where Shoot mode ticks
+  angles). The copy now carries `src: {beat, shot}`, existing copies are linked at start-up, the Shot
+  list shows the pair once, and a location set on one is set on both.
+- Fixed on the way: those copies were written with `name` and untyped angles, so the task screen showed
+  **"undefined"** for every shot sent from an episode and coverage never counted them; and the Shot
+  list showed **"Shot"** for every shot added on a task. One shape now: `text` + angles with `type`.
 
 - **Episodes get angles too.** The beat's old single `framing` becomes its first angle.
 - **"Action"** is the beat (sequence) on an episode and the step (`subs`) on a task, so
@@ -160,7 +166,7 @@ Each step ends with something to install and test on device.
 2. **Export/Import fixed** ✅ Built. Every store, read from the database itself; pictures and voice
    notes included (or left out on request); v2 backups still restore. The same `app/js/transfer.js`
    dropped into v2 would give v2 the full backup too (§9 option a) — one file, no other change.
-3. **Shot store** (§5): migrate task and beat shots to one shape with ids and angles.
+3. **Shot ids** (§5) ✅ Built. Permanent ids, one shape, sequence ↔ shoot-task copies linked.
 4. **Board.** Port the canvas into the Episode/Clip Board view and Content → Boards, scoped CSS.
 5. **Shots ↔ Board** two-way: sections = actions, shot cards = shot records, stills picker.
 6. **Importers** for Storyboard export and Planner plan packs (and v2, per §9).

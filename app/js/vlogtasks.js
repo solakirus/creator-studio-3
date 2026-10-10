@@ -37,8 +37,11 @@
           t: sh.text || sh.name || String(sh), done: false
         })).filter(s => s.t),
         shots: (b.shots || []).map(sh => ({
-          name: sh.text || sh.name || 'Shot',
+          text: sh.text || sh.name || 'Shot',
+          /* the same shot as the sequence's — Board and Shots show them as one */
+          src: sh.id ? { beat: b.id, shot: sh.id } : undefined,
           angles: [{ n: sh.framing || 'Wide' }, { n: 'Medium' }, { n: sh.movement || 'Close' }]
+            .map(a => ({ type: ShotIds.angleType(a.n), n: a.n, done: false }))
         }))
       };
       await Store.put('tasks', task);
