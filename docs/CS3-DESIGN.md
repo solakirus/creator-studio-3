@@ -204,7 +204,9 @@ Each step ends with something to install and test on device.
    - ✅ **Paper** (`js/paper.js` from the Planner kit + `js/screens/paper-screen.js`) — the pen button on
      Today. Today's tasks printed, ticks are the real ticks, ink saved per page, handwriting read by
      Claude (key or paste).
-   - ⏳ **Handwritten notes** in the Notes tool (`inkpad.js`) — not yet.
+   - ✅ **Handwritten notes** — pen button in Notes (`js/inkpad.js` from the Planner kit +
+     `js/screens/ink-note.js`). Ink saved with the note, a picture of it in the list, *Read it* puts the
+     words in the note's text.
    - ⏳ **AI clip studio and Ideas** on the Clip screen — not yet.
 8. Later: nastime sync.
 

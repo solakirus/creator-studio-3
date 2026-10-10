@@ -70,7 +70,8 @@
 
     function row(n){
       const a = Notes.areaOf(areas, n.area);
-      const first = String(n.text || '').split('\n')[0] || '(no text)';
+      const inked = n.ink && window.InkPad && !InkPad.isEmpty(n.ink);
+      const first = String(n.text || '').split('\n')[0] || (inked ? 'Handwritten note' : '(no text)');
       const more = String(n.text || '').split('\n').length > 1;
       return `
         <button class="noterow${n.area ? '' : ' unfiled'}" data-open="${n.id}">
@@ -80,6 +81,7 @@
             <small>${a ? a.label : 'Unfiled'} · ${AGO(n.createdAt)}${more ? ' · more' : ''}</small>
             ${(n.tags || []).length ? `<span class="tg">${
               n.tags.map(t => `<i>#${esc(t)}</i>`).join('')}</span>` : ''}
+            ${inked ? `<canvas class="ink-thumb" data-ink="${n.id}"></canvas>` : ''}
           </span>
           ${U.ICON.chevR}
         </button>`;
@@ -102,6 +104,9 @@
           <div class="pagehead"><h1 class="page-title">Notes</h1>
             <span class="headacts" style="display:flex;gap:8px;align-items:center">
               <button class="headbtn" data-a="areas">AREAS</button>
+              <button class="headbtn" data-a="write" aria-label="Write a note by hand" title="Write by hand"
+                style="padding:0 10px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg></button>
               <button class="headbtn" data-a="capture">CAPTURE</button>
             </span></div>
 
@@ -130,6 +135,11 @@
                 ${list.length ? 'Nothing matches that filter.'
                   : 'Catch a thought with Quick capture and it lands here waiting to be filed.'}</div>`}
         </div>`;
+      /* handwritten notes: a small picture of the page */
+      el.querySelectorAll('canvas[data-ink]').forEach(cv => {
+        const n2 = list.find(x => x.id === cv.dataset.ink);
+        if(n2 && n2.ink) InkPad.preview(cv, n2.ink, 220);
+      });
     }
 
     /* ---------- one note ---------- */
@@ -139,6 +149,8 @@
 
       App.sheet(`
         <h2 style="margin:0 0 14px">Note</h2>
+        ${r.ink && !InkPad.isEmpty(r.ink) ? `<button type="button" class="ink-open" data-ink-open>
+            <canvas class="ink-thumb big" data-ink-sheet></canvas><span>Open the handwriting</span></button>` : ''}
         <textarea id="nt-x" class="pgtext" rows="4">${esc(r.text)}</textarea>
 
         <h3 class="pgh">Which part of your life?</h3>
@@ -222,7 +234,13 @@
           armSend();
         }
 
+        const inkCv = sheet.querySelector('[data-ink-sheet]');
+        if(inkCv) InkPad.preview(inkCv, r.ink, Math.min(520, sheet.clientWidth - 40));
         sheet.addEventListener('click', async e => {
+          if(e.target.closest('[data-ink-open]')){
+            App.closeSheet();
+            return Screens.push('ink-note', { id: r.id, onChange: async () => { await load(); render(); } });
+          }
           const wn = e.target.closest('[data-when]');
           if(wn) return pickWhen(wn.dataset.when);
           const a = e.target.closest('[data-area]');
@@ -302,6 +320,9 @@
 
       const act = e.target.closest('[data-a]');
       if(act && act.dataset.a === 'areas') return editAreas();
+      /* a handwritten note (Creator Studio 3) */
+      if(act && act.dataset.a === 'write')
+        return Screens.push('ink-note', { onChange: async () => { await load(); render(); } });
       if(act && act.dataset.a === 'capture')
         return Screens.push('quick-capture', { onChange: async () => { await load(); render(); } });
 

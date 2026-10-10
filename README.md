@@ -9,7 +9,7 @@ own identity on Android and Windows, a backup that covers everything, permanent 
 canvas built in (episode and clip boards, Content → Boards), episode shots ↔ board cards with the
 stills picker, importers for v2 / Storyboard / Planner, Suggest shots, the week board and Paper.
 Also: the laptop sidebar, board fonts that work offline, and clip boards that follow the clip's flow.
-Still to come: handwritten notes in Notes, and the AI clip studio.
+Handwritten notes are in Notes (the pen button). Still to come: the AI clip studio.
 
 ---
 

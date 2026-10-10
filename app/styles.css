@@ -3951,3 +3951,10 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
   .ctnav{left:calc(var(--rail) + var(--gutter));right:var(--gutter);max-width:640px;margin:0 auto}
   .bd-embed{left:var(--rail)}
 }
+
+/* ---------- Handwritten notes (Creator Studio 3) ---------- */
+.ink-thumb{display:block;margin-top:8px;max-width:100%;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.ink-open{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;padding:0;margin:0 0 12px;
+  background:none;border:0;color:var(--orange);font:inherit;font-size:13.5px;cursor:pointer}
+.ink-open .ink-thumb.big{margin:0}
+.ink-host .ink-page{background:var(--surface-1)}
