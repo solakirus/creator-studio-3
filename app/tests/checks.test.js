@@ -75,5 +75,12 @@ const tr = src['js/transfer.js'];
 ok(!/RECORD_STORES\s*=\s*\[/.test(tr), 'no hand-kept store list in transfer.js');
 ok(/objectStoreNames/.test(tr), 'store list read from the database itself');
 
+console.log('\nthe board works offline');
+const board = fs.readFileSync(A + 'board/board.html', 'utf8');
+ok(!/fonts\.googleapis|fonts\.gstatic/.test(board), 'no Google Fonts in the board');
+const fcss = fs.readFileSync(A + 'board/fonts/board-fonts.css', 'utf8');
+const missingFonts = [...fcss.matchAll(/url\('([^']+)'\)/g)].map(m => m[1]).filter(f => !fs.existsSync(A + 'board/fonts/' + f));
+ok(!missingFonts.length, 'every board font file is there', missingFonts.join(' '));
+
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks pass');
 process.exit(fails ? 1 : 0);

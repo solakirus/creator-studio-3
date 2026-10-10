@@ -17,6 +17,11 @@ def rep(old, new, count=1):
 
 # --- title, theme comes from Creator Studio, its fonts load locally
 rep('<title>Storyboard</title>', '<title>Board · Creator Studio 3</title>')
+# fonts ship with the app (app/board/fonts) instead of loading from Google
+rep("""<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@500;700&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600;700&family=Permanent+Marker&family=Playfair+Display:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">""",
+    """<link rel="stylesheet" href="fonts/board-fonts.css">""")
 rep('<script>try{var t=localStorage.getItem("storyboard-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>',
     '''<script>
 /* Creator Studio 3: this page runs inside the app (an iframe on the Board
