@@ -173,6 +173,11 @@
 
     document.getElementById('tabbar').addEventListener('click', e => {
       const b = e.target.closest('.tab'); if(!b) return;
+      /* On a wide screen the tabs stay visible beside pushed screens (the
+         sidebar), so a tab has to close them — otherwise it changes the tab
+         underneath and nothing seems to happen. On a phone screens cover the
+         bar, so there is never anything to close. */
+      while(Screens.depth && Screens.depth()) Screens.pop();
       if(b.dataset.tab === 'tools'){ setTools(!toolsOpen()); return; }
       go(b.dataset.tab);
     });

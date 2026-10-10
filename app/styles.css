@@ -3922,3 +3922,32 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
 
 /* ---------- Paper (Creator Studio 3) ---------- */
 .screen .pp-wrap{flex:1;min-height:0;overflow:auto;padding:12px var(--gutter) calc(var(--sab) + 20px)}
+
+/* ---------- Laptop: tabs become a left sidebar (Creator Studio 3) ----------
+   From 900px wide the bottom tab bar turns into a rail down the left edge,
+   with labels, and Tools opens as a panel beside it. Everything else — pushed
+   screens, sheets, the floating section navs, the board — starts to the right
+   of the rail. Narrower than that (a phone, or a narrow window) nothing
+   changes. */
+@media (min-width: 900px){
+  :root{--rail:92px;--h-tabbar:0px;--dock-clear:32px}
+  .app{padding-left:var(--rail)}
+  .dock{top:0;bottom:0;right:auto;width:var(--rail);transform:none!important;transition:none;
+    padding:calc(var(--sat) + 14px) 0 calc(var(--sab) + 14px);border-right:1px solid #2C2C2C;
+    display:flex;flex-direction:column}
+  .tabbar{height:auto;flex-direction:column;align-items:stretch;gap:4px;border:0;background:none}
+  .dock.open .tabbar{border:0}
+  .tab{flex:0 0 auto;flex-direction:column;gap:6px;height:68px;margin:0 10px;border-radius:var(--r)}
+  .tab::after{content:attr(aria-label);font-family:var(--display),sans-serif;font-weight:900;
+    font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .tab:hover{background:var(--surface-1)}
+  .tab[aria-current="page"]{background:var(--surface-2)}
+  .dock:not(.open) .panel{display:none}
+  .dock.open .panel{position:fixed;left:var(--rail);top:0;bottom:0;width:460px;overflow-y:auto;
+    padding:calc(var(--sat) + 24px) 24px 24px;border-right:1px solid #2C2C2C;box-shadow:12px 0 32px rgba(0,0,0,.45)}
+  .scrim{left:var(--rail)}
+  .screens{left:var(--rail)}
+  .sheet{left:var(--rail)}
+  .ctnav{left:calc(var(--rail) + var(--gutter));right:var(--gutter);max-width:640px;margin:0 auto}
+  .bd-embed{left:var(--rail)}
+}
