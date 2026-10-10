@@ -175,7 +175,17 @@ Each step ends with something to install and test on device.
    Clip: **Board** button. Content: **Boards** (all boards, list open). Each video's board has a fixed
    id (`vb-vlog-<id>`, `vb-clip-<id>`) in a **Videos** folder; its name and status come from the video.
    Colours and light/dark follow the app's palette. Links: `cs3://board/<id>`.
-5. **Shots ↔ Board** two-way: sections = actions, shot cards = shot records, stills picker.
+5. **Shots ↔ Board** ✅ Built (`app/js/boardsync.js`, `app/js/stillspicker.js`). On an episode's board
+   each sequence is a section and each shot a card in it, made on opening; nothing you placed is moved.
+   Card description / shot type ↔ shot text / framing (and the shoot task's copy); drag between
+   sections moves the shot; left-to-right order is the sequence order and the numbering; a card typed
+   into a section becomes a shot; renaming a section renames the sequence; deleting a card deletes
+   the shot **unless any of it is filmed** (Undo restores it with its id). Cards show progress from
+   Shoot mode (Not shot · 1/2 angles · In the can). Image boxes open the **stills picker**: Reference
+   Library folders and framings, one still at a time, swipe or arrows, filmstrip, "From files…"; the
+   chosen still also becomes the shot's reference. Deleting a section only removes it from the board.
+   Clips' boards are free canvases for now (a clip's plan beats aren't shots yet).
+   Fixed on the way: Storyboard's shot-card header ran ~180px past the card's edge.
 6. **Importers** for Storyboard export and Planner plan packs (and v2, per §9).
 7. **Planner features** (§3): Week board, Suggest shots, Paper, handwriting, AI clip studio.
 8. Later: nastime sync.

@@ -2,7 +2,7 @@
 
    A thin bar with the way back, then the frame. Everything inside the frame —
    cards, lines, views, the boards list, undo — is the canvas's own. */
-(function(){
+(function(global){
 
   function mount(el, params){
     const o = params || {};
@@ -12,10 +12,16 @@
       `<div class="bd-host"></div>`;
     const host = el.querySelector('.bd-host');
     host.appendChild(BoardLink.frame(o));
+
+    /* edits on the board reach the episode at once; redraw the screen
+       underneath so it is current when you come back */
+    if(o.onChange && global.BoardSync){
+      const off = BoardSync.onChange(() => { if(!el.isConnected) return off(); o.onChange(); });
+    }
   }
 
   Screens.register('board', mount);
-})();
+})(window);
 
 /* Content → Boards: every board and folder, the boards list open. */
 (function(){
