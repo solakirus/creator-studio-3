@@ -1,6 +1,6 @@
 /* Notes and photos on a task. */
 const fs = require('fs');
-const A = '/home/claude/work/app/';
+const A = require('path').join(__dirname, '..') + '/';
 
 let fails = 0;
 const check = (label, cond, detail) => {

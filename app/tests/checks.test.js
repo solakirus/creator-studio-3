@@ -1,0 +1,74 @@
+/* Whole-app checks for the mistakes this codebase keeps producing
+   (docs/CREATOR-STUDIO-3.md, "Mistakes this codebase keeps producing"),
+   plus Creator Studio 3's identity. Source checks: cheap, and they catch the
+   bugs that parse fine and then take the app down on the device.
+
+     node app/tests/checks.test.js */
+const fs = require('fs'), path = require('path');
+const A = path.join(__dirname, '..') + '/';
+const ROOT = path.join(A, '..');
+
+let fails = 0;
+const ok = (cond, label, extra) => {
+  console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${label}${extra ? '   ' + extra : ''}`);
+  if (!cond) fails++;
+};
+const walk = d => fs.readdirSync(d, { withFileTypes: true })
+  .flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+const js = walk(A + 'js').filter(f => f.endsWith('.js'));
+const src = Object.fromEntries(js.map(f => [path.relative(A, f), fs.readFileSync(f, 'utf8')]));
+const html = fs.readFileSync(A + 'index.html', 'utf8');
+
+console.log('\nidentity');
+ok(/const DB_NAME = 'creator-studio-3';/.test(src['js/store.js']), 'own database, never v2\'s');
+ok(/<title>Creator Studio 3<\/title>/.test(html), 'title says Creator Studio 3');
+const nativeDir = path.join(ROOT, 'native');
+const nat = fs.readdirSync(nativeDir).filter(f => /\.(java|xml)$/.test(f))
+  .map(f => [f, fs.readFileSync(path.join(nativeDir, f), 'utf8')]);
+const v2links = nat.filter(([, s]) => s.includes('com.creatorstudio.v2://'));
+ok(!v2links.length, 'widgets and shortcuts open cs3://, not v2', v2links.map(x => x[0]).join(' '));
+const sc = (nat.find(x => x[0] === 'shortcuts.xml') || [])[1] || '';
+ok(!/targetPackage="com\.creatorstudio\.v2"/.test(sc), 'shortcuts target the cs3 app id');
+const cap = JSON.parse(fs.readFileSync(path.join(ROOT, 'capacitor.config.json'), 'utf8'));
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+ok(cap.appId === 'com.solakirus.creatorstudio3' && pkg.build.appId === cap.appId, 'Android and Windows share one app id');
+
+console.log('\n1. every script tag points at a file');
+const tags = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
+const missing = tags.filter(t => !fs.existsSync(A + t));
+ok(!missing.length, `${tags.length} scripts load`, missing.join(' '));
+const unloaded = Object.keys(src).filter(f => !tags.includes(f));
+ok(!unloaded.length, 'every js file is loaded', unloaded.join(' '));
+
+console.log('\n2. global. only where global is declared');
+const badGlobal = Object.entries(src).filter(([, s]) => /\bglobal\./.test(s.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))
+  && !/\(function\s*\(\s*global\s*[,)]/.test(s));
+ok(!badGlobal.length, 'no stray global.', badGlobal.map(x => x[0]).join(' '));
+
+console.log('\n3. no handlers matching the theme attributes on <html>');
+const themeMatch = Object.entries(src).filter(([, s]) => /closest\(\s*['"]\[data-(mode|type|palette)\]/.test(s));
+ok(!themeMatch.length, "no closest('[data-mode]') / [data-type] / [data-palette]", themeMatch.map(x => x[0]).join(' '));
+
+console.log('\n5. every pushed screen is registered');
+const all = Object.values(src).join('\n');
+const registered = new Set([...all.matchAll(/Screens\.register\(\s*['"]([\w-]+)['"]/g)].map(m => m[1]));
+const pushed = new Set([...all.matchAll(/Screens\.(?:push|mountInto|replace)\(\s*['"]([\w-]+)['"]/g)].map(m => m[1]));
+const orphan = [...pushed].filter(p => !registered.has(p));
+ok(!orphan.length, `${pushed.size} screens pushed, all registered`, orphan.join(' '));
+
+console.log('\n7. every tool tile has a route');
+const app = src['js/app.js'];
+const toolsBlock = (app.match(/const TOOLS\s*=\s*\[([\s\S]*?)\];/) || [])[1] || '';
+const tiles = [...toolsBlock.matchAll(/name:\s*"([^"]+)"/g)].map(m => m[1]);
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const routes = (app.match(/const TOOL_ROUTES\s*=\s*\{([\s\S]*?)\};/) || [])[1] || '';
+const keys = new Set([...routes.matchAll(/['"]?([\w-]+)['"]?\s*:/g)].map(m => m[1]));
+const noRoute = tiles.filter(t => !keys.has(slug(t)));
+ok(tiles.length === 8, `Tools has 8 tiles`, tiles.join(', '));
+ok(!noRoute.length, 'every tile slug is in TOOL_ROUTES', noRoute.join(' '));
+const routeTargets = [...routes.matchAll(/:\s*'([\w-]+)'/g)].map(m => m[1]);
+const deadRoute = routeTargets.filter(r => !registered.has(r));
+ok(!deadRoute.length, 'every route opens a registered screen', deadRoute.join(' '));
+
+console.log(fails ? `\n${fails} check(s) failed` : '\nall checks pass');
+process.exit(fails ? 1 : 0);

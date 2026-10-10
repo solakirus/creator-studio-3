@@ -1,6 +1,6 @@
 # Creator Studio 3 — design decisions
 
-Status: **for Kris to review.** Sections marked ✅ were agreed in chat. Sections marked 🟠 are
+Status: **for Kris to review.** Step 1 (shell) is built. Sections marked ✅ were agreed in chat. Sections marked 🟠 are
 Claude's recommendation, decided on his behalf so planning could finish — change any of them.
 Nothing has been built yet.
 
@@ -125,20 +125,21 @@ Copy, never move. Old apps keep their data.
 | Laptop Planner | Its existing **Send to phone** plan pack → CS3 Import plan pack. |
 | Creator Studio v2 | ⚠️ **Decision for Kris.** v2's JSON backup covers only **19 of 50 stores** (drops episodes, quarters, months, sources, runs, routines, challenges and every image). Options: **(a, recommended)** ship v2 one export-only fix to `transfer.js` so its backup covers all 50 stores — no data or screen changes; **(b)** start CS3 fresh and use only the 13 CSV datasets + partial backup. A new app can't read v2's database directly. |
 
-## 10. Desktop paths for the native bits 🟠
+## 10. Desktop paths for the native bits ✅ (built in step 1)
 
-Eleven v2 files call Capacitor. One `platform.js` shim decides per call: Capacitor, Electron, or a
-clean no-op. Nothing calls `Capacitor.*` directly any more.
+Changed from the first draft: instead of a `platform.js` shim that eleven files would have to be
+edited to use, the Windows app gets a **Capacitor-shaped bridge** (`electron/preload.js` +
+`electron/main.js`). The web code already looks for `Capacitor.Plugins.<Name>` and skips anything
+missing, so not one of those eleven files had to change.
 
-| File | Android | Windows |
+| Plugin | Android | Windows |
 |---|---|---|
-| `notify.js`, `reminders.js` | native notifications | Electron notifications while the app is running |
-| `widget.js`, `shortcuts.js` | widgets, shortcuts (Java classes renamed to the new package) | no-op |
-| `rungps.js` | GPS runs | hidden on desktop |
-| `share.js`, `saver.js` | Share sheet / Filesystem | Save dialog |
-| `linkmeta.js`, `thumb.js` | CapacitorHttp | Electron main-process fetch |
-| `storyboard.js` | **removed** — boards are built in now | — |
-| `app.js` | back button, deep links | window/deep-link handling |
+| `App` (deep links, back) | Capacitor | `cs3://` registered with Windows; cold and warm links both route |
+| `CapacitorHttp` (`linkmeta.js`, `thumb.js`) | Capacitor | request made by the Electron main process, no CORS |
+| `Filesystem` + `Share` (`saver.js`) | write + share sheet | write + **Save As** dialog; "Documents" = `Documents\Creator Studio 3` |
+| `LocalNotifications` (`reminders.js`, `notify.js`) | Android alarms | Windows notifications **while CS3 is open**; a reminder due while it's closed is skipped |
+| `CSWidget`, `LiveStatus`, `SendIntent`, GPS | native | not offered — the app already treats them as "not on this device" |
+| `storyboard.js` | link to old Storyboard app | removed in step 4, when boards are built in |
 
 ## 11. Build and safety 🟠
 
@@ -154,8 +155,8 @@ clean no-op. Nothing calls `Capacitor.*` directly any more.
 
 Each step ends with something to install and test on device.
 
-1. **Shell.** Copy v2 into the new repo, rename identity (§2), add `platform.js` + Electron. Result:
-   CS3 runs on phone and laptop, identical to v2, with its own empty database.
+1. **Shell.** ✅ Built. v2 copied into the new repo, identity renamed (§2), Electron + bridge (§10),
+   Android project copied from v2 by script. CS3 runs identical to v2, with its own empty database.
 2. **Export/Import fixed** to cover every store (§8).
 3. **Shot store** (§5): migrate task and beat shots to one shape with ids and angles.
 4. **Board.** Port the canvas into the Episode/Clip Board view and Content → Boards, scoped CSS.

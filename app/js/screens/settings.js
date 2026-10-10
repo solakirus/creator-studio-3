@@ -692,7 +692,7 @@
       const counts = Object.entries(obj.data).filter(([,v]) => v.length)
         .map(([k,v]) => `${v.length} ${k}`).join(', ') || 'nothing yet';
       const d = new Date();
-      const name = `creator-studio-${d.getFullYear()}-${U.pad(d.getMonth()+1)}-${U.pad(d.getDate())}.json`;
+      const name = `creator-studio-3-${d.getFullYear()}-${U.pad(d.getMonth()+1)}-${U.pad(d.getDate())}.json`;
       const ok = await Transfer.download(name, JSON.stringify(obj, null, 2), 'application/json');
       if(ok) U.toast(`Exported ${counts}`);
     } catch(e){ console.error(e); U.toast('Export failed'); }

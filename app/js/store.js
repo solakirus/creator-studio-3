@@ -1,7 +1,7 @@
 /* Creator Studio — storage layer.
    One database, one version, every store declared in one place. */
 (function(global){
-  const DB_NAME = 'creator-studio';
+  const DB_NAME = 'creator-studio-3';
   const DB_VERSION = 33;
   const STORES = {
     art:            {},                  // task card images, keyed by item slug

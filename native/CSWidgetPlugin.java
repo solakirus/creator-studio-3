@@ -54,11 +54,11 @@ public class CSWidgetPlugin extends Plugin {
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
 
         redraw(ctx, mgr, CSWidgetProvider.class,
-               R.layout.cs_widget, "com.creatorstudio.v2://go/today");
+               R.layout.cs_widget, "cs3://go/today");
         redraw(ctx, mgr, CSWidgetSmall.class,
-               R.layout.cs_widget_small, "com.creatorstudio.v2://go/today");
+               R.layout.cs_widget_small, "cs3://go/today");
         redraw(ctx, mgr, CSWidgetShoot.class,
-               R.layout.cs_widget_shoot, "com.creatorstudio.v2://go/shoot");
+               R.layout.cs_widget_shoot, "cs3://go/shoot");
     }
 
     private static void redraw(Context ctx, AppWidgetManager mgr,
