@@ -1,7 +1,7 @@
 """Ports Storyboard's www/index.html into Creator Studio 3 as app/board/board.html.
 
 Run once (kept for the record of exactly what changed):
-    python3 scripts/port-board.py path/to/storyboard/www/index.html
+    python3 scripts/port-board.py vendor/storyboard-index.html app/board/board.html
 Every edit is an exact-match replace that must hit exactly once, so a changed
 source fails loudly instead of half-porting."""
 import sys, re

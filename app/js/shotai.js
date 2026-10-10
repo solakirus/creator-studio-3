@@ -64,6 +64,7 @@ Reply with ONLY a JSON array, no prose, no code fences. Each item:
     }));
   }
 
+  /* p is the prompt text, or a full content array (text plus an image) */
   async function ask(p, c, signal){
     const res = await fetch('https://api.anthropic.com/v1/messages', { signal, method:'POST',
       headers:{ 'content-type':'application/json', 'x-api-key': c.key, 'anthropic-version':'2023-06-01',
@@ -210,5 +211,49 @@ Reply with ONLY a JSON array, no prose, no code fences. Each item:
     });
   }
 
-  global.ShotAI = { suggest, forBeat, openSettings, prompt, parse, MODELS };
+  /* Reading a picture (handwriting on a Paper page). With a key it asks
+     Claude directly; without one it shows the picture with steps to do it in
+     a chat, and waits for the pasted answer. Resolves to text, or null. */
+  async function readImage(text, image, label){
+    const c = await cfg();
+    if(c.key){
+      U.toast(label || 'Reading…');
+      try {
+        const [, mime, b64] = String(image).match(/^data:([^;]+);base64,(.*)$/) || [];
+        return await ask([{ type:'image', source:{ type:'base64', media_type: mime || 'image/png', data: b64 } },
+                          { type:'text', text }], c);
+      } catch(e){ U.toast(e.message || 'Could not reach Claude — paste it instead'); }
+    }
+    return new Promise(resolve => {
+      let answer = null;
+      App.sheet(`
+        <h2>Read handwriting</h2>
+        <p class="hintline" style="margin:0 0 10px">Save the picture, drop it into a Claude chat with the prompt,
+          then paste the answer here. (With an API key in Settings this happens by itself.)</p>
+        <img src="${image}" alt="Your handwriting" style="max-width:100%;max-height:30vh;background:#fff;border-radius:var(--r);margin:0 0 10px">
+        <div class="sheetcta" style="margin:0 0 10px">
+          <a class="btn-ghost" href="${image}" download="handwriting.png" style="text-align:center">1 · Save image</a>
+          <button class="btn-ghost" data-copy>2 · Copy prompt</button>
+        </div>
+        <textarea id="ai-hw" rows="5" placeholder="3 · Paste Claude's answer"
+          style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);
+          color:var(--cream);font-size:14px;padding:10px;outline:none;resize:vertical"></textarea>
+        <div class="sheetcta"><button class="btn-primary" data-ok>Use this answer</button>
+          <button class="btn-ghost" data-cancel>Cancel</button></div>`, sheetEl => {
+        sheetEl.addEventListener('click', async e => {
+          if(e.target.closest('[data-copy]')){
+            try { await navigator.clipboard.writeText(text); U.toast('Prompt copied'); } catch(err){ U.toast('Could not copy'); }
+            return;
+          }
+          if(e.target.closest('[data-cancel]')){ App.closeSheet(); return resolve(null); }
+          if(e.target.closest('[data-ok]')){
+            answer = sheetEl.querySelector('#ai-hw').value.trim();
+            App.closeSheet(); resolve(answer || null);
+          }
+        });
+      });
+    });
+  }
+
+  global.ShotAI = { suggest, forBeat, openSettings, prompt, parse, readImage, MODELS };
 })(window);

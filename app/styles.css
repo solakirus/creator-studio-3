@@ -3919,3 +3919,6 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
   .wk-cols{overflow-x:visible}
   .wk-col{flex:1 1 0;min-width:0}
 }
+
+/* ---------- Paper (Creator Studio 3) ---------- */
+.screen .pp-wrap{flex:1;min-height:0;overflow:auto;padding:12px var(--gutter) calc(var(--sab) + 20px)}

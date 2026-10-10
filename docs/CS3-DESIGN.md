@@ -1,6 +1,6 @@
 # Creator Studio 3 — design decisions
 
-Status: **for Kris to review.** Step 1 (shell) is built. Sections marked ✅ were agreed in chat. Sections marked 🟠 are
+Status: **for Kris to review.** Steps 1–6 built; step 7 mostly built (see §12). Sections marked ✅ were agreed in chat. Sections marked 🟠 are
 Claude's recommendation, decided on his behalf so planning could finish — change any of them.
 Nothing has been built yet.
 
@@ -195,7 +195,16 @@ Each step ends with something to install and test on device.
    - **Laptop Planner** → Settings → *Open a plan pack* (its *Send to phone* file). `planpack.js` from
      the Planner kit, unchanged except that shot names land in `text`. Safe to open twice; never
      touches a tick.
-7. **Planner features** (§3): Week board, Suggest shots, Paper, handwriting, AI clip studio.
+7. **Planner features** (§3):
+   - ✅ **Suggest shots** (`js/shotai.js`) — sequence screen and episode sections on the board; your
+     own key (Settings → Planning help, stored as `secret:ai`, never in a backup) or copy/paste a chat.
+   - ✅ **Week board** (`js/screens/week-board.js`) — Month tab → Week; drag to move, tap to open;
+     the laptop opens on it.
+   - ✅ **Paper** (`js/paper.js` from the Planner kit + `js/screens/paper-screen.js`) — the pen button on
+     Today. Today's tasks printed, ticks are the real ticks, ink saved per page, handwriting read by
+     Claude (key or paste).
+   - ⏳ **Handwritten notes** in the Notes tool (`inkpad.js`) — not yet.
+   - ⏳ **AI clip studio and Ideas** on the Clip screen — not yet.
 8. Later: nastime sync.
 
 ## Open items for Kris

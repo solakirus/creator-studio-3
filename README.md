@@ -4,8 +4,11 @@ Creator Studio with the storyboard canvas built in, as **one app** for your phon
 (.exe). It's a **separate app**: Creator Studio v2, the Planner and Storyboard stay installed and
 untouched.
 
-**Where it's at:** step 1 of the build order (`docs/CS3-DESIGN.md` §12). CS3 is v2 under a new
-name, with its own empty database, running on both Android and Windows. The canvas comes in step 4.
+**Where it's at:** steps 1–6 of the build order are built, and most of step 7 (`docs/CS3-DESIGN.md` §12):
+own identity on Android and Windows, a backup that covers everything, permanent shot ids, the
+canvas built in (episode and clip boards, Content → Boards), episode shots ↔ board cards with the
+stills picker, importers for v2 / Storyboard / Planner, Suggest shots, the week board and Paper.
+Still to come: handwritten notes in Notes, and the AI clip studio.
 
 ---
 
@@ -38,7 +41,17 @@ After that, `build.bat` is the whole loop. It also saves each build as a git com
 - [ ] The installer adds a **Creator Studio 3** shortcut, and it opens on Today.
 - [ ] Settings → export a backup: a **Save As** box appears.
 - [ ] Swipe file → paste an Instagram or TikTok link: the title and cover come in.
-- The laptop shows the phone layout stretched wide for now. The sidebar layout comes with the canvas.
+- [ ] Month tab opens on **Week**; drag a task to another day.
+- [ ] Open an episode → **Board**: its sequences are sections, its shots are cards. Edit one and check
+      the episode.
+- The laptop still shows the phone's bottom tab bar, stretched wide; a sidebar is still to do.
+
+## Bring your data in
+
+1. **Creator Studio v2** → in v2: Settings → Export everything. In CS3: Settings → Restore from backup.
+   (v2's backup only holds 19 of its 50 stores; dropping CS3's `app/js/transfer.js` into v2 fixes that.)
+2. **Storyboard** → in Storyboard: ⋯ → Export everything. In CS3: Content → Boards → Import a board or backup.
+3. **Laptop Planner** → in the Planner: Send to phone. In CS3: Settings → Open a plan pack.
 
 ## Put it on GitHub
 
@@ -70,6 +83,10 @@ From then on, `build.bat` offers to push after each build.
 
 - Read `docs/CS3-DESIGN.md` first, then the "Mistakes this codebase keeps producing" section of
   `docs/CREATOR-STUDIO-3.md`.
+- Browser tests live in `app/tests/browser/` (playwright-core + Chromium; build the preview first).
+  They cover backup, shot ids, the board, board ↔ episode sync, imports, Suggest shots, Week and Paper.
+- `scripts/port-board.py` rebuilds `app/board/board.html` from Storyboard's original file; every change
+  made to the canvas is in that script.
 - `npm test` runs every harness, including `checks.test.js`. It checks app identity, script tags,
   stray `global.`, theme-attribute handlers, screen push/register pairs, and tool routes. Run it
   after every change.
