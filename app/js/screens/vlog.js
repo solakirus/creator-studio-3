@@ -1987,7 +1987,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14.5 6.5l3 3"/></svg></button>
             </div>`).join('')
             : `<p style="margin:0;color:var(--muted);font-size:14.5px">No shots yet. Add the setups you need for this sequence.</p>`}
-          <button class="addbeat" data-a="addshot">+ Add a shot</button>
+          <div style="display:flex;gap:8px">
+            <button class="addbeat" data-a="addshot" style="flex:1">+ Add a shot</button>
+            <button class="addbeat" data-a="suggestshots" style="flex:1">✦ Suggest shots</button>
+          </div>
         </div>
 
         <div class="block">
@@ -2120,6 +2123,9 @@
       if(!a) return;
 
       if(a.dataset.a === 'addshot') return editShot(null);
+      /* break this action into its shots (Creator Studio 3) */
+      if(a.dataset.a === 'suggestshots')
+        return ShotAI.forBeat(v.id, b.id, async () => { await load(); render(); params.onChange && params.onChange(); });
 
       if(a.dataset.a === 'rename'){
         App.sheet(`<h2>Rename beat</h2>

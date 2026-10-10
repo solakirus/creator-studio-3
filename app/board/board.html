@@ -740,6 +740,8 @@ body:not([data-mode="canvas"]) .drawbar{display:none!important}
   .tool{flex:0 0 auto;min-width:58px;width:auto}
 }
 :root[data-cs3] #themeBtn{display:none}
+.cs3-suggest{position:absolute;top:10px;right:12px;font:inherit;font-size:12.5px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.cs3-suggest:hover{border-color:var(--slate);color:var(--slate)}
 .cs3-prog{font-size:11px;line-height:1;padding:5px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;margin-left:auto;align-self:center}
 :root[data-cs3] .frame-title{font-family:"Red Hat Display","DM Sans",sans-serif;font-weight:900}
 /* Storyboard bug: '.t-shot .card-bar .f{width:auto}' outranked the number and
@@ -1375,7 +1377,21 @@ const BUILDERS = {
 
   heading(c, body) { body.append(txt(c, 'text', 'Section heading', 'heading-text')); },
 
-  frame(c, body) { body.append(inp(c, 'title', 'Section name', 'frame-title'), h('p', { class: 'frame-count' })); },
+  frame(c, body) {
+    body.append(inp(c, 'title', 'Section name', 'frame-title'), h('p', { class: 'frame-count' }));
+    if (c.data.beat && cs3Video(c.board)) {
+      const P = cs3Parent();
+      const btn = h('button', { class: 'cs3-suggest', type: 'button', title: 'Break this action into its shots' }, '✦ Suggest shots');
+      btn.addEventListener('pointerdown', e => e.stopPropagation());
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!P || !P.ShotAI) return;
+        const board = c.board;
+        P.ShotAI.forBeat(cs3Video(board).id, c.data.beat, () => cs3Pull(board));
+      });
+      body.append(btn);
+    }
+  },
 
   video(c, body) {
     const box = h('div', { class: 'player-v' });

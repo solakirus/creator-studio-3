@@ -101,6 +101,7 @@
       } else {
         const pairs = [];
         for(let i = 0; i < got.keys.length; i++){
+          if(s === 'settings' && /^secret:/.test(String(got.keys[i]))) continue;   /* API keys stay on the device */
           const e = await encode(got.values[i], photos, stats);
           if(e === undefined) continue;          /* a picture left out on purpose */
           pairs.push([got.keys[i], e]); stats.records++;
@@ -159,7 +160,14 @@
       else plan.push([s, items, true]);
     }
 
+    /* replacing settings must not take this device's own secrets with it */
+    let secrets = [];
+    if(mode === 'replace' && plan.some(([s]) => s === 'settings')){
+      const { keys, values } = await Store.all('settings');
+      secrets = keys.map((k, i) => [k, values[i]]).filter(([k]) => /^secret:/.test(String(k)));
+    }
     if(mode === 'replace') for(const [s] of plan) await Store.clear(s);
+    if(secrets.length) await putMany('settings', secrets, true);
     for(const [s, items, keyed] of plan) report.records += await putMany(s, items, keyed);
     report.photos = stats.blobs;
     lastReport = report;

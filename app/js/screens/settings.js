@@ -113,6 +113,11 @@
         ${row(D.cloudq,'Notification diagnostics','What is and is not working','data-go="notifydiag"')}
       </div>
 
+      ${sec('Planning help')}
+      <div class="group">
+        ${row(D.bolt,'AI shot suggestions','Your Anthropic key for Suggest shots — or none, and paste into a chat','data-go="ai"')}
+      </div>
+
       ${sec('Data')}
       <div class="group">
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
@@ -231,6 +236,7 @@
       if(go.dataset.go === 'csv')       return openCsvImport();
       if(go.dataset.go === 'restore')   return openRestore();
       if(go.dataset.go === 'planpack')  return openPlanPack();
+      if(go.dataset.go === 'ai')        return ShotAI.openSettings();
       if(go.dataset.go === 'backup')    return doBackup();
       if(go.dataset.go === 'csvout')    return doSheets();
 

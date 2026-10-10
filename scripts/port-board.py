@@ -353,6 +353,27 @@ async function cs3JoinImported(oldItems, map) {
 
 (async function init() {""")
 
+# --- a section that is an episode sequence can ask Claude for its shots
+rep("""  frame(c, body) { body.append(inp(c, 'title', 'Section name', 'frame-title'), h('p', { class: 'frame-count' })); },""",
+"""  frame(c, body) {
+    body.append(inp(c, 'title', 'Section name', 'frame-title'), h('p', { class: 'frame-count' }));
+    if (c.data.beat && cs3Video(c.board)) {
+      const P = cs3Parent();
+      const btn = h('button', { class: 'cs3-suggest', type: 'button', title: 'Break this action into its shots' }, '✦ Suggest shots');
+      btn.addEventListener('pointerdown', e => e.stopPropagation());
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!P || !P.ShotAI) return;
+        const board = c.board;
+        P.ShotAI.forBeat(cs3Video(board).id, c.data.beat, () => cs3Pull(board));
+      });
+      body.append(btn);
+    }
+  },""")
+rep(""":root[data-cs3] #themeBtn{display:none}""", """:root[data-cs3] #themeBtn{display:none}
+.cs3-suggest{position:absolute;top:10px;right:12px;font:inherit;font-size:12.5px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.cs3-suggest:hover{border-color:var(--slate);color:var(--slate)}""")
+
 # --- open the board the app asks for: #board=<id>, or #video=<type>:<id>&name=…&status=…&due=…
 rep("""  openBoard(root.id);
   try { if (localStorage.getItem('storyboard-side') === '1' && !isNarrow()) setSide(true); } catch (e) {}""",

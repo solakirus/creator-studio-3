@@ -3869,3 +3869,11 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
 .sp-th.on{border-color:var(--orange)}
 .sp-cta{display:flex;gap:8px;flex-shrink:0}
 .sp-cta .btn-primary{flex:2}.sp-cta .btn-ghost{flex:1}
+
+/* ---------- Suggest shots (Creator Studio 3) ---------- */
+.ai-list{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;max-height:48vh;overflow-y:auto}
+.ai-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);cursor:pointer}
+.ai-row input{margin-top:3px;accent-color:var(--orange)}
+.ai-row b{display:block;font-size:15px;color:var(--cream)}
+.ai-row small{display:block;font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.ai-busy{color:var(--muted);margin:6px 0 14px}
