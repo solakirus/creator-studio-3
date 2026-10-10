@@ -14,9 +14,12 @@
     { v:'calendar', label:'Calendar', screen:'calendar',
       d:'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4' },
     { v:'months',   label:'Months',   screen:'months',
-      d:'M5 21V4M5 4h11l-2 4 2 4H5' }
+      d:'M5 21V4M5 4h11l-2 4 2 4H5' },
+    /* Creator Studio 3: the laptop Planner's week board — the laptop opens on it */
+    { v:'week',     label:'Week',     screen:'week-board',
+      d:'M3 5h18v15H3zM3 9h18M8.5 9v11M14 9v11' }
   ];
-  let section = 'calendar';
+  let section = (global.matchMedia && matchMedia('(min-width: 900px)').matches) ? 'week' : 'calendar';
 
   (function css(){
     if(document.getElementById('mn-css')) return;
