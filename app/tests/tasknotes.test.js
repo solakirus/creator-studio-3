@@ -23,7 +23,7 @@ check('and the reason is written down', /a task write also re-sorts Today/.test(
 
 console.log('\n— photos —');
 check('there is a store for them', /'task-media'/.test(store));
-check('and the version was bumped for it', /DB_VERSION = 33/.test(store));
+check('and the version was bumped for it', +((store.match(/DB_VERSION = (\d+)/) || [])[1]) >= 33);
 check('keyed per task so several fit', /<taskId>:<n>/.test(store));
 check('adding one opens the picker', /App\.pickImage\(async file =>/.test(t));
 check('into the next free slot', /Math\.max\(\.\.\.mine\) \+ 1/.test(t));

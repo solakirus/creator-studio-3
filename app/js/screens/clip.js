@@ -391,7 +391,8 @@
         <p class="note">Each beat becomes a shot on whichever shoot day this clip belongs to.</p>`;
 
       el.innerHTML = Screens.bar({ kicker:'Clip', title:TAB_NAME[tab],
-        actions:`<button class="btn-sm" data-a="open">Details</button>` }) + `
+        actions:`<button class="btn-sm" data-a="board">Board</button>
+                  <button class="btn-sm" data-a="open">Details</button>` }) + `
       <div class="view">
         <div class="cp-head">
           <p class="t">${clip.title || 'Untitled clip'}</p>
@@ -984,6 +985,10 @@
         params && params.onEdit && params.onEdit(clip);
         return;
       }
+
+      /* the clip's own canvas — status follows the clip */
+      if(a.dataset.a === 'board') return BoardLink.open({ type:'clip', id:clip.id,
+        name: clip.title || 'Untitled clip', status: BoardLink.statusFor(clip.stage), kicker:'Clip' });
 
       if(a.dataset.a === 'toshoot'){
         const beats = clip.plan.beats.filter(b => b.trim());

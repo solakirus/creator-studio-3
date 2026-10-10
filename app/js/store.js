@@ -2,7 +2,7 @@
    One database, one version, every store declared in one place. */
 (function(global){
   const DB_NAME = 'creator-studio-3';
-  const DB_VERSION = 33;
+  const DB_VERSION = 34;
   const STORES = {
     art:            {},                  // task card images, keyed by item slug
     focal:          {},                  // {x,y} focal point per item slug
@@ -53,7 +53,8 @@
     sources:        { keyPath:'id' },     // what is true and who said it
     physique:       { keyPath:'id' },     // weight and photo log
     'physique-photo': {},                 // the photos themselves, keyed by entry id
-    months:         { keyPath:'id' }      // challenge months: whole weeks, one challenge, its stakes
+    months:         { keyPath:'id' },     // challenge months: whole weeks, one challenge, its stakes
+    'board-items':  { keyPath:'id' }      // boards, cards, lines and ink from the canvas (board/board.html)
   };
 
   let dbp = null;

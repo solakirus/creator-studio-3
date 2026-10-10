@@ -43,7 +43,8 @@
     clip:     { screen:'clip' },
     swipe:    { screen:'swipe' },
     series:   { screen:'series-view' },
-    channel:  { screen:'channel', param:'name' }
+    channel:  { screen:'channel', param:'name' },
+    board:    { screen:'board', param:'board' }
   };
 
   /* Opening the app from a shortcut should land you on the thing, not on Today

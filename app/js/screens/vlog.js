@@ -690,6 +690,7 @@
       el.innerHTML = Screens.bar({ kicker:v.week ? `Episode ${v.week}` : 'Vlog builder', title:v.title,
         actions:`<span class="modetog">
           <button data-a="mode-plan" aria-pressed="${mode==='plan'}">Plan</button>
+          <button data-a="mode-board" aria-pressed="false">Board</button>
           <button data-a="mode-week" aria-pressed="${mode==='week'}">Shoot</button>
           <button data-a="mode-outline" aria-pressed="${mode==='outline'}">Edit</button>
         </span>` }) + `
@@ -1055,6 +1056,7 @@
       el.innerHTML = Screens.bar({ kicker:v.week ? `Episode ${v.week}` : 'Vlog builder', title:v.title,
         actions:`<span class="modetog">
           <button data-a="mode-plan" aria-pressed="true">Plan</button>
+          <button data-a="mode-board" aria-pressed="false">Board</button>
           <button data-a="mode-week" aria-pressed="false">Shoot</button>
           <button data-a="mode-outline" aria-pressed="false">Edit</button>
         </span>` }) + `
@@ -1170,22 +1172,14 @@
             (quarter.template || []).length ? 'Edit the template' : 'Set up a week template'}</button>
         </div>` : ''}
 
-        <!-- The board for this week, in the storyboard app. Only an id is kept
-             here; the link out carries a way back to this episode so it is a
-             round trip rather than a jump you have to find your way home from. -->
-        <div class="sec" style="margin-top:22px"><h2>Storyboard</h2><div class="rule"></div></div>
-        ${v.boardId
-          ? `<button class="noterow" data-a="board">
-              <span class="dot" style="background:var(--orange)"></span>
-              <span class="t"><b>Open the board</b>
-                <small>${esc(v.boardId)}</small></span>
-              ${U.ICON.chevR}
-            </button>
-            <button class="btn-ghost" data-a="unboard" style="width:100%;margin:8px 0 0">
-              Unlink it</button>`
-          : `<p class="hintline" style="margin:0 0 10px">Link the board you planned this
-              week on, and it is one tap from here.</p>
-            <button class="btn-ghost" data-a="board" style="width:100%">Link a board</button>`}
+        <!-- Every episode has its own board, built in (Creator Studio 3). -->
+        <div class="sec" style="margin-top:22px"><h2>Board</h2><div class="rule"></div></div>
+        <button class="noterow" data-a="board">
+          <span class="dot" style="background:var(--orange)"></span>
+          <span class="t"><b>Open this week's board</b>
+            <small>The canvas for planning it — shots, stills, notes, music</small></span>
+          ${U.ICON.chevR}
+        </button>
       </div>`;
     }
 
@@ -1215,6 +1209,7 @@
       el.innerHTML = Screens.bar({ kicker:v.week ? `Episode ${v.week}` : 'Vlog builder', title:v.title,
         actions:`<span class="modetog">
           <button data-a="mode-plan" aria-pressed="false">Plan</button>
+          <button data-a="mode-board" aria-pressed="false">Board</button>
           <button data-a="mode-week" aria-pressed="true">Shoot</button>
           <button data-a="mode-outline" aria-pressed="false">Edit</button>
         </span>` }) + `
@@ -1742,7 +1737,9 @@
         await load(); return render();
       }
 
-      if(a2.dataset.a === 'board'){
+      if(a2.dataset.a === 'board') return BoardLink.open({ type:'vlog', id:v.id, name:v.title,
+        kicker: v.week ? `Episode ${v.week}` : 'Episode', onChange: async () => { await load(); render(); } });
+      if(a2.dataset.a === 'board-old'){
         if(v.boardId){
           /* the way back is this episode, so the other app can return you */
           const ok = Storyboard.openBoard(v.boardId, Storyboard.backLink('vlog', v.id));
@@ -1834,6 +1831,10 @@
           onChange:async () => { await load(); render(); } });
 
       if(a2.dataset.a === 'mode-plan'){ mode = 'plan'; return render(); }
+      /* The board is a canvas and wants the whole screen, so it opens over
+         the episode rather than inside it; back returns here. */
+      if(a2.dataset.a === 'mode-board') return BoardLink.open({ type:'vlog', id:v.id, name:v.title,
+        kicker: v.week ? `Episode ${v.week}` : 'Episode', onChange: async () => { await load(); render(); } });
       if(a2.dataset.a === 'mode-outline'){ mode = 'outline'; return render(); }
       if(a2.dataset.a === 'mode-week'){ mode = 'week'; return render(); }
       if(a2.dataset.a === 'wprev'){ weekOffset--; return renderWeek(); }

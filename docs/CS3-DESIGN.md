@@ -167,7 +167,14 @@ Each step ends with something to install and test on device.
    notes included (or left out on request); v2 backups still restore. The same `app/js/transfer.js`
    dropped into v2 would give v2 the full backup too (§9 option a) — one file, no other change.
 3. **Shot ids** (§5) ✅ Built. Permanent ids, one shape, sequence ↔ shoot-task copies linked.
-4. **Board.** Port the canvas into the Episode/Clip Board view and Content → Boards, scoped CSS.
+4. **Board.** ✅ Built. Storyboard's canvas, whole, as `app/board/board.html`, in a frame on the Board
+   screen — so its generic class names can't collide with the app's, and nothing of it had to be
+   rewritten. `scripts/port-board.py` records every change made to the original. Boards are stored
+   in the app's database (`board-items`, DB v34), so Export everything carries them. Episode:
+   Plan · **Board** · Shoot · Edit, and the old "Link a board" block now opens the built-in board.
+   Clip: **Board** button. Content: **Boards** (all boards, list open). Each video's board has a fixed
+   id (`vb-vlog-<id>`, `vb-clip-<id>`) in a **Videos** folder; its name and status come from the video.
+   Colours and light/dark follow the app's palette. Links: `cs3://board/<id>`.
 5. **Shots ↔ Board** two-way: sections = actions, shot cards = shot records, stills picker.
 6. **Importers** for Storyboard export and Planner plan packs (and v2, per §9).
 7. **Planner features** (§3): Week board, Suggest shots, Paper, handwriting, AI clip studio.

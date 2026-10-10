@@ -19,7 +19,11 @@
     /* The swipe file lived two levels down under Tools → Shots, which is a long
        way from where you use it: deciding how to shoot something. */
     { v:'swipe',    label:'Swipe',    screen:'swipe-file',
-      d:'M4 6h11v12H4zM17 8h3v8h-3M7.5 9.5l4 2.5-4 2.5z' }
+      d:'M4 6h11v12H4zM17 8h3v8h-3M7.5 9.5l4 2.5-4 2.5z' },
+    /* Creator Studio 3: the canvas. Every video's board, plus free boards
+       and folders for everything that isn't one video. */
+    { v:'boards',   label:'Boards',   screen:'boards-home',
+      d:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 16.5h7M16.5 13v7' }
   ];
 
   let view = 'clips';

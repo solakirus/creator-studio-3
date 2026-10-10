@@ -30,6 +30,12 @@ def inline_css(m):
 n = len(re.findall(r'<script src="([^"]+)"></script>', html))
 html = re.sub(r'<script src="([^"]+)"></script>', inline_script, html)
 html = re.sub(r'<link rel="stylesheet" href="([^"]+)">', inline_css, html)
+# The board page rides along as text; the Board screen loads it into its
+# frame with srcdoc (a file:// frame couldn't reach the app's database).
+if os.path.exists('board/board.html'):
+    board = open('board/board.html', encoding='utf-8').read().replace('</script>', '<\\/script>')
+    at = html.rfind('</body>')
+    html = html[:at] + '<script type="text/plain" id="cs3-board-src">' + board + '</script>\n' + html[at:]
 open('../creator-studio-preview.html', 'w', encoding='utf-8').write(html)
 size = os.path.getsize('../creator-studio-preview.html') // 1024
 print('inlined %d scripts -> ../creator-studio-preview.html (%d KB)' % (n, size))

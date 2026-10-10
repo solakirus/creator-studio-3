@@ -3822,3 +3822,13 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   background:rgba(10,8,6,.78);border:1px solid rgba(237,229,210,.25);color:var(--cream);
   font-size:17px;line-height:1;padding:0}
+
+/* ---------- Board (Creator Studio 3) ----------
+   The canvas runs in a frame (board/board.html). On a pushed screen it fills
+   everything under the bar; in Content → Boards it fills the space above the
+   floating section nav. Neither host is a .view — the frame does its own
+   scrolling, and a second .view would fight the first for the height. */
+.bd-screen .bd-host{flex:1;min-height:0;position:relative}
+.bd-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:var(--bg)}
+.bd-embed{position:fixed;left:var(--sal);right:var(--sar);top:var(--sat);
+  bottom:calc(var(--h-tabbar) + var(--sab) + 84px);z-index:1}
