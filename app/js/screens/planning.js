@@ -128,13 +128,19 @@
 
     function shell(){
       el.innerHTML = Screens.bar({ kicker:'Creator studio',
-        title: section === 'months' ? 'Months' : 'Planning' }) + `
+        title: section === 'months' ? 'Months'
+             : section === 'paper'  ? 'Paper' : 'Planning' }) + `
         <div class="sectabs">
           <div class="segmented" role="tablist">
             <button role="tab" data-sec="quarters"
               aria-selected="${section === 'quarters'}">Quarters</button>
             <button role="tab" data-sec="months"
               aria-selected="${section === 'months'}">Months</button>
+            <!-- Paper belongs here as much as under the pen on Today: on a
+                 laptop you plan from this screen, and hunting for it on Today
+                 is the wrong way round. -->
+            <button role="tab" data-sec="paper"
+              aria-selected="${section === 'paper'}">Paper</button>
           </div>
         </div>
         <div id="planHost"></div>`;
@@ -143,6 +149,14 @@
     async function show(){
       shell();
       const host = el.querySelector('#planHost');
+      if(section === 'paper'){
+        const ok = Screens.mountInto
+          ? Screens.mountInto('paper', host, { embedded:true })
+          : null;
+        if(!ok) host.innerHTML = '<div class="view"><div class="empty">' +
+          '<b>Not available</b>The paper pages could not be opened.</div></div>';
+        return;
+      }
       if(section === 'months'){
         const ok = Screens.mountInto
           ? Screens.mountInto('months', host, { embedded:true })

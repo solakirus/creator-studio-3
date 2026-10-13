@@ -376,3 +376,36 @@ a cadence or priority. Three spots fixed.
 `node app/tests/prep-render.test.js` (the three screens against a stub DOM),
 `node app/tests/checks.test.js` (whole-app invariants, now 23 of them). No
 install needed.
+
+## Paper on the laptop (2026-10-13)
+
+**Paper is now a tab in Planning**, beside Quarters and Months, as well as the
+pen button on Today. On a laptop you plan from Planning, so having the only way
+in be a small pen icon on Today was the wrong way round. Hosted there it drops
+its own title bar — the tab strip already names it, and a second bar would eat
+the height the page needs.
+
+**The page fits the window.** `fit()` used to size by width alone and cap at
+1.25×. That is right on a phone, where screen and page are both portrait. On a
+laptop the window is landscape and the page is not, so width-only produced a
+tall sheet you scrolled through rather than a page you could look at. There are
+now two modes, on a button in the toolbar:
+
+- **Whole page** (default) — fits both ways, measuring the room under the
+  toolbar with `getBoundingClientRect` rather than assuming it.
+- **Fill width** — the old behaviour, capped at 2×. Bigger, and the better one
+  to actually write at.
+
+The choice is remembered in `paper-meta.prefs.fit`.
+
+Worth knowing: `spreadOn()` already turns on the two-page spread from 900px
+wide, so a laptop gets two pages side by side. With whole-page fit that is
+1086×760 in a 1450×760 window — a far better use of a landscape screen than one
+portrait page at 543px wide.
+
+**Also fixed:** `paper-screen.js` filtered tasks with `t => t.day`, so a task on
+a prep day never reached the page at all. Now `!= null`, like the rest.
+
+**Tests:** `node app/tests/paper-tab.test.js` — 18 checks covering the Planning
+tab, the embedded bar, the prep-day filter, and the fit arithmetic at laptop,
+spread and phone sizes.

@@ -45,7 +45,8 @@
 
   /* ---------------------------------------------------------- state */
   let H = null, host = null, ro = null;
-  const st = { mode: 'day', date: today(), spread: null, side: 'L', tool: 'pen', colour: INKS[0], size: 'med', finger: false };
+  const st = { mode: 'day', date: today(), spread: null, side: 'L', tool: 'pen', colour: INKS[0], size: 'med', finger: false,
+    fit: 'page' };     /* 'page' = the whole sheet, 'width' = fill the width */
   let meta = { done: {}, idx: {} };
   let rec = null, key = null, scale = 1, penSeen = false;
   const cache = {}, pending = {};
@@ -60,7 +61,8 @@
   async function loadMeta(){
     try { const m = await Store.get('settings', 'paper-meta'); if(m) meta = { done: m.done || {}, idx: m.idx || {}, ...m }; } catch(e){}
     if(meta.prefs){ Object.assign(st, { colour: meta.prefs.colour || st.colour, size: meta.prefs.size || st.size,
-      finger: !!meta.prefs.finger, spread: meta.prefs.spread === undefined ? null : meta.prefs.spread }); }
+      finger: !!meta.prefs.finger, spread: meta.prefs.spread === undefined ? null : meta.prefs.spread,
+      fit: meta.prefs.fit === 'width' ? 'width' : 'page' }); }
   }
   async function loadRec(k){
     if(cache[k]) return cache[k];
@@ -71,7 +73,7 @@
     return (cache[k] = r);
   }
   function saveMeta(){
-    meta.prefs = { colour: st.colour, size: st.size, finger: st.finger, spread: st.spread };
+    meta.prefs = { colour: st.colour, size: st.size, finger: st.finger, spread: st.spread, fit: st.fit };
     Store.put('settings', meta, 'paper-meta').catch(e => console.error(e));
   }
   /* each page saves a moment after you lift the pen */
@@ -349,6 +351,9 @@
         <div class="pp-grp">
           <button type="button" class="pp-b pp-txt${st.finger ? ' on' : ''}" data-pa="finger" aria-pressed="${st.finger}" title="Off: once a pen is used, fingers scroll. On: fingers write too.">Finger writes</button>
           <button type="button" class="pp-b pp-txt" data-pa="pages" title="One page or the two-page spread">${two ? '1 page' : '2 pages'}</button>
+          <button type="button" class="pp-b pp-txt" data-pa="fit"
+            title="Whole page: see all of it at once. Fill width: bigger, better to write at."
+            >${st.fit === 'width' ? 'Fill width' : 'Whole page'}</button>
         </div>
       </div>
       ${two ? '' : `<div class="pp-sides" role="tablist">${['L', 'R'].map((s, i) =>
@@ -365,10 +370,28 @@
     fit();
   }
 
+  /* How big to draw the sheet.
+
+     Sizing by width alone is right on a phone, where the screen is portrait
+     and so is the page. On a laptop the window is landscape and the page is
+     not, so width-only gives you a tall sheet you scroll through instead of a
+     page you can see — which is not what a paper planner is for. So "Whole
+     page" fits both ways and is the default; "Fill width" is the old
+     behaviour, kept because it is the better one to write at. */
   function fit(){
     const stage = host && host.querySelector('.pp-stage'); if(!stage) return;
     const n = host.querySelectorAll('.pp-page').length;
-    scale = Math.min(1.25, (stage.clientWidth || 1000) / (PW * n));
+    const byW = (stage.clientWidth || 1000) / (PW * n);
+
+    if(st.fit === 'width'){
+      scale = Math.min(2, byW);
+    } else {
+      /* the room left under the toolbar, measured rather than assumed */
+      const hb = host.getBoundingClientRect(), sb = stage.getBoundingClientRect();
+      const room = hb.bottom - sb.top - 16;
+      scale = room > 120 ? Math.min(byW, room / PH) : byW;
+    }
+    scale = Math.max(.08, scale);
     const sp = host.querySelector('.pp-spread'), sc = host.querySelector('.pp-scale');
     sp.style.width = PW * n * scale + 'px'; sp.style.height = PH * scale + 'px';
     sc.style.transform = `scale(${scale})`;
@@ -525,6 +548,8 @@
     if(a === 'mode'){ st.mode = el.dataset.m; return render(); }
     if(a === 'side'){ st.side = el.dataset.s; return render(); }
     if(a === 'pages'){ st.spread = !spreadOn(); saveMeta(); return render(); }
+    /* only the drawn size changes, so re-fit rather than redraw the page */
+    if(a === 'fit'){ st.fit = st.fit === 'width' ? 'page' : 'width'; saveMeta(); return render(); }
     if(a === 'finger'){ st.finger = !st.finger; saveMeta(); return render(); }
     if(a === 'tool'){ st.tool = el.dataset.t; return render(); }
     if(a === 'colour'){ st.colour = el.dataset.c; if(st.tool !== 'pen') st.tool = 'pen'; saveMeta(); return render(); }
