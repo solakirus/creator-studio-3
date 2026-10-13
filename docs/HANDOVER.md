@@ -409,3 +409,44 @@ a prep day never reached the page at all. Now `!= null`, like the rest.
 **Tests:** `node app/tests/paper-tab.test.js` — 18 checks covering the Planning
 tab, the embedded bar, the prep-day filter, and the fit arithmetic at laptop,
 spread and phone sizes.
+
+## Paper: full view, page turning, journal (2026-10-13)
+
+**Full view** — a toolbar button puts the planner on its own, as a `pp-full`
+class on the host rather than the Fullscreen API: the dialogs, toolbar and pen
+all have to keep working, and a real fullscreen request puts `<dialog>` behind
+the page. The toolbar stays sticky at the top with a ✕, and Escape leaves.
+
+**Turning the pages** — a wide strip down each edge of the stage, plus
+←/→ and PageUp/PageDown. The strips are sized in `fit()` to the margin
+*beside* the sheet and disabled when there is none, so a pen stroke down the
+edge of the page stays a pen stroke rather than turning it. The keyboard
+handler stands down while something is being typed into and while a dialog is
+open, and is unbound when full view closes.
+
+**Mindful morning and Evening reflection can go to the journal.** Those two
+zones carry `journal:'<heading>'`, which reaches the element as `data-journal`
+and the typed dialog as a checkbox. The writer lives in `paper-screen.js`,
+since paper.js has no business knowing the store: it appends under `## <heading>`
+in that date's `journal` record, and re-reading the same box **replaces its own
+section** rather than stacking another copy. Handwriting stays on the page
+either way; this is an addition, not a move.
+
+**What the zones already did**, which is worth writing down because it is easy
+to assume otherwise:
+
+| Box | Becomes |
+|---|---|
+| To-do | tasks on that date, no time |
+| Top 3 priorities | tasks on that date, no time |
+| Schedule | tasks at the hour written in — 5 PM block → `at` 17:00, one hour |
+| Month calendar | tasks on that day of the month |
+| Notes, Main focus | typed copy kept with the page, searchable |
+
+The schedule prompt already asks for start and end, and a bracket spanning
+several hour boxes becomes a longer `mins`. So "write it in the 5 PM block and
+get a 5 PM task" was already the design — if it misreads, that is the
+handwriting step, not the mapping.
+
+**Tests:** `node app/tests/paper-full.test.js` — 30 checks, including the
+journal writer run for real against a fake store.

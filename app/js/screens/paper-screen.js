@@ -56,6 +56,24 @@
         Data.invalidate('tasks'); await load(); Paper.render();
         o.onChange && o.onChange();
       },
+      /* Mindful morning and Evening reflection can land in that day's journal
+         entry, which is one record per date. Appended under a heading, never
+         overwriting what is already there, and never twice: re-reading the
+         same box replaces its own section rather than stacking copies. */
+      journal: async (date, heading, text) => {
+        const id = date;
+        const entry = (await Store.get('journal', id)) ||
+          { id, mood:null, text:'', prompt:null, createdAt:Date.now() };
+        const head = `## ${heading}`;
+        const block = `${head}\n${text}`;
+        const had = entry.text || '';
+        const re = new RegExp(`(^|\\n)${head.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n[\\s\\S]*?(?=\\n## |$)`);
+        entry.text = re.test(had)
+          ? had.replace(re, (m, lead) => `${lead}${block}`)
+          : (had.trim() ? `${had.trim()}\n\n${block}` : block);
+        await Store.put('journal', entry);
+        Data.invalidate && Data.invalidate('journal');
+      },
       ai: (prompt, image, label) => ShotAI.readImage(prompt, image, label),
       toast: m => U.toast(m)
     });

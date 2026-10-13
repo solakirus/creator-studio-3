@@ -154,3 +154,31 @@ dialog.pp-dlg::backdrop{background:rgba(0,0,0,.6)}
 .pp-acts{display:flex;gap:8px;margin-top:18px;align-items:center}
 .pp-btn{height:40px;padding:0 16px;border:1px solid #2F2C26;border-radius:4px;background:#151515;color:#EDE5D2;font:700 14px "DM Sans",sans-serif;cursor:pointer}
 .pp-btn.pri{background:#FB6900;border-color:#FB6900;color:#151515}
+
+/* ---------- Full view, and turning the pages ----------
+   A class rather than the Fullscreen API: the dialogs, the toolbar and the pen
+   all have to keep working, and a real fullscreen request puts the dialogs
+   behind the page. */
+.pp-host.pp-full{position:fixed;inset:0;z-index:90;margin:0;padding:0;
+  background:var(--bg);overflow:auto;display:flex;flex-direction:column}
+.pp-host.pp-full .pp-bar{position:sticky;top:0;z-index:2;background:var(--bg);
+  padding-left:14px;padding-right:14px}
+.pp-host.pp-full .pp-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+
+/* The edge of the book. A wide strip rather than a small button, so turning a
+   page is a glance-free click near the edge — the toolbar's labelled arrows
+   stay for anyone navigating by keyboard or screen reader. */
+.pp-stage{position:relative}
+.pp-turn{position:absolute;top:0;bottom:0;z-index:1;display:none;
+  align-items:center;justify-content:center;padding:0;cursor:pointer;
+  background:none;border:0;color:var(--muted);opacity:0;transition:opacity .15s}
+.pp-turn.prev{left:0}
+.pp-turn.next{right:0}
+.pp-turn svg{width:26px;height:26px}
+.pp-host.pp-full .pp-turn{display:flex}
+.pp-stage:hover .pp-turn{opacity:.55}
+.pp-turn:hover{opacity:1;color:var(--cream);background:linear-gradient(to right,rgba(0,0,0,.28),transparent)}
+.pp-turn.next:hover{background:linear-gradient(to left,rgba(0,0,0,.28),transparent)}
+/* a pen near the edge must not turn the page */
+.pp-host.pp-handmode .pp-turn{opacity:.55}
+/* width is set in fit(): the margin beside the sheet, or nothing */

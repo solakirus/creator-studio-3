@@ -48,7 +48,7 @@
   const st = { mode: 'day', date: today(), spread: null, side: 'L', tool: 'pen', colour: INKS[0], size: 'med', finger: false,
     fit: 'page' };     /* 'page' = the whole sheet, 'width' = fill the width */
   let meta = { done: {}, idx: {} };
-  let rec = null, key = null, scale = 1, penSeen = false;
+  let rec = null, key = null, scale = 1, penSeen = false, keyWired = false;
   const cache = {}, pending = {};
   let undo = [];
   let skipClick = false;
@@ -101,7 +101,7 @@
   function zone(z, title, kind, body, o){
     o = o || {};
     const typed = rec.typed[z];
-    return `<section class="pp-z${o.cls ? ' ' + o.cls : ''}" data-z="${z}" data-kind="${kind}"${o.date ? ` data-date="${o.date}"` : ''} style="${o.style || ''}">
+    return `<section class="pp-z${o.cls ? ' ' + o.cls : ''}" data-z="${z}" data-kind="${kind}"${o.date ? ` data-date="${o.date}"` : ''}${o.journal ? ` data-journal="${o.journal}"` : ''} style="${o.style || ''}">
       <header class="pp-zh">${o.head || `<span>${title}</span>`}${o.tag ? `<i class="pp-tag">${o.tag}</i>` : ''}
         <span class="pp-grow"></span>
         ${typed ? `<button type="button" class="pp-zb-btn pp-typed" data-pa="typed" data-z="${z}" title="See the typed version">Aa ✓</button>` : ''}
@@ -175,8 +175,8 @@
         </div>
       </div>
       <div class="pp-cols" style="height:280px">
-        ${zone('morning', 'Mindful morning', 'text', `<span class="pp-prompt" style="top:2px">GRATEFUL FOR</span><span class="pp-prompt" style="top:106px">TODAY I WILL</span>`, { style: 'flex:1', tag: 'journal' })}
-        ${zone('evening', 'Evening reflection', 'text', `<span class="pp-prompt" style="top:2px">WIN OF THE DAY</span><span class="pp-prompt" style="top:106px">TOMORROW</span>`, { style: 'flex:1', tag: 'journal' })}
+        ${zone('morning', 'Mindful morning', 'text', `<span class="pp-prompt" style="top:2px">GRATEFUL FOR</span><span class="pp-prompt" style="top:106px">TODAY I WILL</span>`, { style: 'flex:1', tag: 'journal', journal: 'Mindful morning' })}
+        ${zone('evening', 'Evening reflection', 'text', `<span class="pp-prompt" style="top:2px">WIN OF THE DAY</span><span class="pp-prompt" style="top:106px">TOMORROW</span>`, { style: 'flex:1', tag: 'journal', journal: 'Evening reflection' })}
       </div>`;
   }
 
@@ -354,16 +354,25 @@
           <button type="button" class="pp-b pp-txt" data-pa="fit"
             title="Whole page: see all of it at once. Fill width: bigger, better to write at."
             >${st.fit === 'width' ? 'Fill width' : 'Whole page'}</button>
+          <button type="button" class="pp-b pp-txt" data-pa="full"
+            title="${st.full ? 'Leave full view (Esc)' : 'Full view — just the planner, arrow keys turn the pages'}"
+            >${st.full ? '✕ Close' : 'Full view'}</button>
         </div>
       </div>
       ${two ? '' : `<div class="pp-sides" role="tablist">${['L', 'R'].map((s, i) =>
         `<button type="button" role="tab" class="pp-b pp-txt${st.side === s ? ' on' : ''}" data-pa="side" data-s="${s}" aria-selected="${st.side === s}">${P.names[i]}</button>`).join('')}</div>`}
       <div class="pp-stage">
+        <!-- Turning a page: a wide strip down each edge rather than a small
+             button, so it works like the edge of a book. Arrow keys do the
+             same. Hidden from screen readers — the toolbar's ‹ › are the
+             labelled way to do it. -->
+        <button type="button" class="pp-turn prev" data-pa="prev" aria-hidden="true" tabindex="-1">${IC.left}</button>
         <div class="pp-spread">
           <div class="pp-scale" style="width:${PW * sides.length}px">
             ${sides.map(s => `<div class="pp-page pp-${s}" data-side="${s}">${P[s]()}<canvas class="pp-ink" data-side="${s}" aria-label="Writing area"></canvas></div>`).join('')}
           </div>
         </div>
+        <button type="button" class="pp-turn next" data-pa="next" aria-hidden="true" tabindex="-1">${IC.right}</button>
       </div>`;
     host.classList.toggle('pp-handmode', st.tool === 'hand');
     host.querySelectorAll('.pp-ink').forEach(wireCanvas);
@@ -399,6 +408,18 @@
     host.querySelectorAll('.pp-ink').forEach(cv => {
       cv.width = Math.round(PW * scale * dpr); cv.height = Math.round(PH * scale * dpr);
       redraw(cv.dataset.side);
+    });
+
+    /* The page-turn strips live in the margin beside the sheet, never over it:
+       a pen stroke down the edge of the page must stay a pen stroke. If there
+       is no margin to put them in — filling the width — they go away, and the
+       toolbar arrows and the keyboard still turn the page. */
+    const margin = Math.floor(((stage.clientWidth || 0) - PW * n * scale) / 2);
+    const room = margin >= 34;
+    host.querySelectorAll('.pp-turn').forEach(b => {
+      b.style.width = room ? margin + 'px' : '0px';
+      b.style.visibility = room ? '' : 'hidden';
+      b.disabled = !room;
     });
   }
 
@@ -525,6 +546,39 @@
     st.mode = m; st.date = iso; if(!spreadOn()) st.side = m === 'day' ? 'L' : st.side;
     render();
   }
+  /* Full view: the planner and nothing else, with the page turns on the
+     keyboard. It is a class on the host rather than the Fullscreen API,
+     because the pen, the dialogs and the toolbar all have to keep working,
+     and a real fullscreen request would put the dialogs behind the page. */
+  function setFull(on){
+    st.full = !!on;
+    if(!host) return;
+    host.classList.toggle('pp-full', st.full);
+    if(st.full){
+      if(!keyWired){
+        keyWired = true;
+        global.addEventListener('keydown', onKey);
+      }
+    } else if(keyWired){
+      keyWired = false;
+      global.removeEventListener('keydown', onKey);
+    }
+    render();
+  }
+
+  /* Arrow keys turn the page, Escape leaves. Not while something is being
+     typed into, or a dialog is open — those want their own keys. */
+  function onKey(e){
+    if(!st.full) return;
+    if(e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+    if(document.querySelector('dialog[open]')) return;
+    if(e.key === 'Escape'){ e.preventDefault(); return setFull(false); }
+    if(e.key === 'ArrowLeft'  || e.key === 'PageUp'  ){ e.preventDefault(); return step(-1); }
+    if(e.key === 'ArrowRight' || e.key === 'PageDown'){ e.preventDefault(); return step(1); }
+  }
+
   function step(n){
     if(st.mode === 'day') st.date = addDays(st.date, n);
     else if(st.mode === 'week') st.date = addDays(mondayOf(st.date), 7 * n);
@@ -550,6 +604,7 @@
     if(a === 'pages'){ st.spread = !spreadOn(); saveMeta(); return render(); }
     /* only the drawn size changes, so re-fit rather than redraw the page */
     if(a === 'fit'){ st.fit = st.fit === 'width' ? 'page' : 'width'; saveMeta(); return render(); }
+    if(a === 'full') return setFull(!st.full);
     if(a === 'finger'){ st.finger = !st.finger; saveMeta(); return render(); }
     if(a === 'tool'){ st.tool = el.dataset.t; return render(); }
     if(a === 'colour'){ st.colour = el.dataset.c; if(st.tool !== 'pen') st.tool = 'pen'; saveMeta(); return render(); }
@@ -616,7 +671,8 @@ one entry per handwritten item, like [{"day":12,"title":"Mike's birthday"}]`
     if(text == null) return;
     text = String(text).replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^```\w*\n?|```\s*$/g, '').trim();
     if(!text) return toast('Nothing came back');
-    const ctx = { z, side, kind, strokes, k: k0, r: rec0, date: zEl.dataset.date || defaultDate() };
+    const ctx = { z, side, kind, strokes, k: k0, r: rec0, date: zEl.dataset.date || defaultDate(),
+      journal: zEl.dataset.journal || '' };
     if(kind === 'text') return typedDialog(ctx, text);
     let items = [];
     if(kind === 'tasks'){
@@ -691,9 +747,16 @@ one entry per handwritten item, like [{"day":12,"title":"Mike's birthday"}]`
   }
 
   function typedDialog(ctx, text){
+    /* A journal box keeps its handwriting on the page and can also put the
+       words in that day's journal entry, which is where you would go looking
+       for them weeks later. Off unless asked, and it appends under a heading
+       rather than overwriting whatever is already there. */
+    const jr = ctx.journal && H.journal;
     dialog(`<h2>Typed version</h2>
       <p class="pp-dnote">Saved with this page so it can be searched later. Your handwriting stays as it is.</p>
       <textarea class="pp-in pp-ta" rows="8">${esc(text)}</textarea>
+      ${jr ? `<label class="pp-chk" style="margin-top:10px"><input type="checkbox" id="pp-jr" checked>
+        <span>Also add to ${esc(ctx.date)}'s journal, under “${esc(ctx.journal)}”</span></label>` : ''}
       <div class="pp-acts">
         ${ctx.r.typed[ctx.z] ? '<button type="button" class="pp-btn" data-del>Remove typed copy</button>' : ''}
         <span class="pp-grow"></span>
@@ -702,16 +765,23 @@ one entry per handwritten item, like [{"day":12,"title":"Mike's birthday"}]`
       d.querySelector('[data-x]').onclick = () => d.close();
       const del = d.querySelector('[data-del]');
       if(del) del.onclick = () => { delete ctx.r.typed[ctx.z]; saveRec(ctx.k, ctx.r); d.close(); render(); };
-      d.querySelector('[data-ok]').onclick = () => {
+      d.querySelector('[data-ok]').onclick = async () => {
         const v = d.querySelector('textarea').value.trim();
         if(v) ctx.r.typed[ctx.z] = v; else delete ctx.r.typed[ctx.z];
-        saveRec(ctx.k, ctx.r); d.close(); render();
+        saveRec(ctx.k, ctx.r);
+        const jbox = d.querySelector('#pp-jr');
+        d.close(); render();
+        if(v && jbox && jbox.checked){
+          try { await H.journal(ctx.date, ctx.journal, v); toast('Added to the journal'); }
+          catch(e){ toast('Saved on the page, but the journal could not be written'); }
+        }
       };
     });
   }
   function showTyped(z){
     const zEl = host.querySelector(`[data-z="${z}"]`); if(!zEl) return;
-    typedDialog({ z, side: zEl.closest('.pp-page').dataset.side, kind: 'text', strokes: [], k: key, r: rec }, rec.typed[z] || '');
+    typedDialog({ z, side: zEl.closest('.pp-page').dataset.side, kind: 'text', strokes: [], k: key, r: rec,
+      date: zEl.dataset.date || defaultDate(), journal: zEl.dataset.journal || '' }, rec.typed[z] || '');
   }
 
   /* ---------------------------------------------------------- mount */
