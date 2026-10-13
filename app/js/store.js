@@ -1,7 +1,7 @@
 /* Creator Studio — storage layer.
    One database, one version, every store declared in one place. */
 (function(global){
-  const DB_NAME = 'creator-studio-3';
+  const DB_NAME = global.CS_DB_NAME || 'creator-studio-3';   /* tests set CS_DB_NAME so they never touch real data */
   const DB_VERSION = 34;
   const STORES = {
     art:            {},                  // task card images, keyed by item slug
@@ -69,7 +69,23 @@
         });
       };
       r.onsuccess = () => res(r.result);
-      r.onerror  = () => rej(r.error);
+      r.onerror  = e => {
+        /* The phone already has a NEWER database than this code knows about
+           (a later build bumped DB_VERSION). Asking for an older version is an
+           error that would take the whole app down — open it as it is instead.
+           Nothing is lost; stores this build doesn't know are simply unused.
+
+           This is here because of 5 Oct 2026: a build made from a stale copy
+           went onto the phone and the app would not open at all. */
+        if(r.error && r.error.name === 'VersionError'){
+          e.preventDefault && e.preventDefault();
+          const r2 = indexedDB.open(DB_NAME);
+          r2.onsuccess = () => res(r2.result);
+          r2.onerror = () => rej(r2.error);
+          return;
+        }
+        rej(r.error);
+      };
     });
     return dbp;
   }

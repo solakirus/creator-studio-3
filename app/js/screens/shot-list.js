@@ -65,7 +65,10 @@
                 <span class="bx">${ICON.check}</span>
                 <span class="tx">
                   <b>${s.name}</b>
-                  <span>${s.sourceName}${s.day ? ` · day ${s.day}` : ''}${
+                  <!-- != null, and prep days read as "prep": day 0 and below
+                       are real dates before Day 1, not a missing day -->
+                  <span>${s.sourceName}${s.day != null
+                    ? ` · ${s.day >= 1 ? 'day ' + s.day : 'prep'}` : ''}${
                     s.at ? ` · ${s.at}` : ''}</span>
                   ${(s.framing || s.movement) ? `<span class="tags">
                     ${s.framing ? `<span class="mtag" style="--mc:#5B62A8">${s.framing}</span>` : ''}
@@ -97,7 +100,8 @@
       App.sheet(`
         <h2>${s.name}</h2>
         <p style="margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.55">
-          From ${s.sourceName}${s.day ? ` · day ${s.day}` : ''}.</p>
+          From ${s.sourceName}${s.day != null
+            ? ` · ${s.day >= 1 ? 'day ' + s.day : 'prep'}` : ''}.</p>
 
         <div class="field"><label for="sl-loc">Where it happens</label>
           <select id="sl-loc" class="unit">

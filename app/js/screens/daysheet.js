@@ -24,11 +24,14 @@
   };
 
   async function mount(el, params){
-    let day = params.day, date = null, items = [], lib = [], kit = [];
+    let day = params.day, date = null, items = [], lib = [], kit = [], dayLbl = '';
 
     async function load(){
       if(day == null) day = await Data.currentDay();
       date = await Data.dayToDate(day);
+      /* one place names a day, so prep days read the same here, on the profile
+         and on the shot list */
+      dayLbl = await Data.dayLabel(day);
       lib = await ShotLib.all();
       kit = await Coverage.kit();
 
@@ -141,7 +144,7 @@
                day and week, then the date on its own, then the counts. The date
                uses the short month so it can never break at display size. -->
           <p class="sub">${d.toLocaleDateString(undefined,{ weekday:'long' })}
-            · Day ${day} · Week ${Math.ceil(day / 7)}</p>
+            · ${dayLbl}</p>
           <h1>${d.toLocaleDateString(undefined,{ month:'short', day:'numeric', year:'numeric' })}</h1>
           <p class="line">${items.length} thing${items.length===1?'':'s'} · ${doneCount} done ·
             ${shots} shot${shots===1?'':'s'} · ${angles} angle${angles===1?'':'s'}</p>

@@ -69,7 +69,9 @@
 
     const { values: vlogs } = await Store.all('vlogs');
     vlogs.forEach(v => (v.acts || []).forEach(a => (a.beats || [])
-      .filter(b => b.at && b.day && !b.done)
+      /* day 0 is a real date — the day before Day 1 — so this is != null,
+         never a truthiness test */
+      .filter(b => b.at && b.day != null && !b.done)
       .forEach(b => {
         const when = dateOf(b.day, b.at);
         if(when > now && when < horizon)

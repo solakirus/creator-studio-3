@@ -71,7 +71,7 @@
       tags: v.tags || [],
       hook: v.hook || '',
       shots: v.shots || [],
-      day: v.day || null,
+      day: v.day ?? null,
       taskId: v.taskId || null,
       plat: v.plat || 'youtube',
       dur: '',

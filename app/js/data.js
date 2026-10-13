@@ -128,6 +128,96 @@
   }
   const weekOf = n => Math.ceil(n / 7);
 
+  /* ---- before Day 1: the run-up has a name of its own ----
+
+     currentDay() above is already unclamped, so the app can already sit on a
+     day 0 or a negative one. What was missing is a NAME for that stretch —
+     "Prep", "Red phase", "Q1 prep" — and one place that labels a day, so the
+     day sheet, the profile and the shot list all say the same thing. */
+  const DEFAULT_PRE = 'Prep';
+
+  /* A compatibility alias. Nothing in this app calls it — currentDay() is
+     already unclamped and is what the screens use — but v2 screens and the
+     laptop Planner call Data.todayDay(), so anything ported in from either
+     keeps working instead of failing on a missing function. */
+  async function todayDay(){ return currentDay(); }
+
+  async function phaseOf(n){
+    if(n >= 1) return { pre:false, name:null, toGo:0 };
+    const p = await program();
+    return { pre:true, name:(p.preName || DEFAULT_PRE).trim() || DEFAULT_PRE, toGo: 1 - n };
+  }
+
+  /* "Day 12 · week 2", or "Prep · 4 days to Day 1" */
+  async function dayLabel(n){
+    const ph = await phaseOf(n);
+    return ph.pre
+      ? `${ph.name} · ${ph.toGo} day${ph.toGo === 1 ? '' : 's'} to Day 1`
+      : `Day ${n} · week ${weekOf(n)}`;
+  }
+
+  /* Move Day 1 without moving anything on the calendar.
+
+     Everything is stored by program day and week number, so a new start date
+     on its own slides every task, beat and milestone to a different real date.
+     This shifts the numbers by the same amount the start moved, so a shoot
+     planned for Saturday Oct 10 is still on Saturday Oct 10 afterwards. */
+  async function moveStart(newStart, preName){
+    const p = await program();
+    const days  = Math.round((midnight(newStart) - midnight(p.start)) / DAY);
+    const weeks = Math.round((sundayOf(newStart) - sundayOf(p.start)) / (7 * DAY));
+    const shiftDay  = d => typeof d === 'number' ? d - days  : d;
+    const shiftWeek = w => typeof w === 'number' ? w - weeks : w;
+    const moved = { tasks:0, beats:0, episodes:0, challenges:0, plans:0, videos:0 };
+
+    if(days){
+      const { values: ts } = await Store.all('tasks');
+      for(const t of ts){
+        if(typeof t.day !== 'number') continue;
+        await Store.put('tasks', { ...t, day: shiftDay(t.day) }); moved.tasks++;
+      }
+      const { values: vs } = await Store.all('vlogs').catch(() => ({ values:[] }));
+      for(const v of vs){
+        const nv = { ...v, week: shiftWeek(v.week),
+          acts: (v.acts || []).map(a => ({ ...a, day: shiftDay(a.day),
+            beats: (a.beats || []).map(b => {
+              if(typeof b.day === 'number') moved.beats++;
+              return { ...b, day: shiftDay(b.day) };
+            }) })) };
+        await Store.put('vlogs', nv); moved.episodes++;
+      }
+      /* program plans: the day week one begins, and days tapped on or off by hand */
+      const { values: ps } = await Store.all('plans').catch(() => ({ values:[] }));
+      for(const pl of ps){
+        await Store.put('plans', { ...pl, startDay: shiftDay(pl.startDay),
+          add: (pl.add || []).map(shiftDay), skip: (pl.skip || []).map(shiftDay) });
+        moved.plans++;
+      }
+      /* one-off videos sit on a program day too */
+      const { values: vds } = await Store.all('videos').catch(() => ({ values:[] }));
+      for(const v of vds){
+        if(typeof v.day !== 'number') continue;
+        await Store.put('videos', { ...v, day: shiftDay(v.day) }); moved.videos++;
+      }
+    }
+    if(weeks){
+      const { values: cs } = await Store.all('challenges').catch(() => ({ values:[] }));
+      for(const c of cs){
+        await Store.put('challenges', { ...c,
+          fromWeek: shiftWeek(c.fromWeek), toWeek: shiftWeek(c.toWeek),
+          milestones: (c.milestones || []).map(m => ({ ...m, week: shiftWeek(m.week) })) });
+        moved.challenges++;
+      }
+      if(global.Challenges && Challenges.invalidate) Challenges.invalidate();
+    }
+
+    const next = { start: midnight(newStart) };
+    if(preName !== undefined) next.preName = String(preName || '').trim() || DEFAULT_PRE;
+    await setProgram(next);
+    invalidate();
+    return { ...moved, days };
+  }
+
   /* ---- weeks run Sunday to Saturday, and an episode is a week ---- */
   function sundayOf(ts){
     const d = new Date(ts);
@@ -310,6 +400,7 @@
   global.Data = { series, clips, tasks, sessions, targets, setTargets, invalidate, loadSamples,
                   SEED_SERIES, SEED_CLIPS,
                   program, setProgram, dayToDate, dateToDay, currentDay, weekOf,
+                  todayDay, phaseOf, dayLabel, moveStart,
                   weekNumber, weekStartOf, weekDates, monthOfWeek, currentWeek, sundayOf,
                   seriesWithProgress, clipsWithSeries, activeSeries, weekly, weekStart, activity, version,
                   saveSeries, deleteSeries, saveClip, deleteClip, PCT_FOR };

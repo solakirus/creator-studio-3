@@ -53,7 +53,7 @@
       const st = Videos.stage(v.stage);
       const i = Videos.STAGES.findIndex(x => x.k === v.stage);
       const pct = Math.round(((i + 1) / Videos.STAGES.length) * 100);
-      const when = v.day ? (v.day === today ? 'today' : v.day < today
+      const when = v.day != null ? (v.day === today ? 'today' : v.day < today
         ? `day ${v.day} · passed` : `day ${v.day}`) : 'no day yet';
       return `
         <article class="mediacard"><div class="card" data-video="${v.id}">

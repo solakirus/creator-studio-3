@@ -338,7 +338,7 @@
           } else {
             act.beats.push({ id:uid('b'), title:String(r.sequence).trim(),
               setup: r.setup || 'talking', script: r.line || '', purpose: r.purpose || '',
-              sourceId:null, shots, day: day || act.day || null, at:null,
+              sourceId:null, shots, day: day ?? act.day ?? null, at:null,
               done:false, clipId:null });
           }
           n++;

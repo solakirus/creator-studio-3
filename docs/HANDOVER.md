@@ -336,3 +336,43 @@ Merged onto this build's own swipe.js, clip.js, task.js, views/clips.js and view
   folder). The swipe entry has folder chips (+ New folder).
 - **multiselect.js** — opts.extra: [{label, run(ids, done)}] buttons before Delete. Swipes use it for
   "+ Folder" and, inside a folder, "Remove".
+
+## The run-up to Day 1 (brought over from v2, 2026-10-13)
+
+CS3's baseline was the v2 copy that did **not** have v2's prep-phase work, so
+three things were missing. They are in now.
+
+**Day numbers run below 1.** `currentDay()` was already unclamped here, so the
+app could already sit on day 0 or a negative day — but a lot of code tested a
+day for truthiness, which silently treats **day 0 as no day at all**. Day 0 is
+a real date: the day before Day 1. Every such test is now `!= null`, and every
+`x.day || null` normalisation is `?? null`. Seventeen spots across eleven files.
+`checks.test.js` now fails if one comes back.
+
+**The run-up has a name.** `program.preName`, default "Prep" (quick picks Prep
+and Red phase), set in Settings → Program start. `Data.phaseOf(n)` returns
+`{pre, name, toGo}` and `Data.dayLabel(n)` gives either "Day 12 · week 2" or
+"Prep · 4 days to Day 1". The day sheet, the profile badge and the shot list all
+read through those, so they agree. `Data.todayDay()` exists as an alias of
+`currentDay()` only so code ported from v2 or the laptop Planner keeps working.
+
+**Moving Day 1 no longer moves the plans.** This was a live bug: the start-date
+sheet called `Data.setProgram({ start })` and nothing else, so every task, beat
+and milestone slid onto a different real date. It now calls `Data.moveStart(ts,
+preName)`, which shifts stored day numbers by the same amount the start moved —
+tasks, episode acts and beats, program plans (`startDay`, `add`, `skip`),
+one-off videos, and challenge weeks — so a shoot planned for Saturday is still
+on Saturday afterwards. `tests/prep.test.js` proves that against a fake store:
+a shoot on day 10 stays on Wed 14 Oct while its number moves to day 6.
+
+**Also fixed:** `store.js` opens a newer database as-is instead of failing with
+`VersionError` — the thing that stops a stale build taking the phone down, which
+is what happened on 5 Oct 2026. And it honours `CS_DB_NAME` so tests use a
+throwaway database. The task detail printed a missing value as a word for any
+task made from a clip, a shot, a quick capture or a vlog day — none of those set
+a cadence or priority. Three spots fixed.
+
+**Tests:** `node app/tests/prep.test.js` (moveStart against a fake store),
+`node app/tests/prep-render.test.js` (the three screens against a stub DOM),
+`node app/tests/checks.test.js` (whole-app invariants, now 23 of them). No
+install needed.

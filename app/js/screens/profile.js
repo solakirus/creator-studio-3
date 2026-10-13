@@ -48,6 +48,8 @@
         Celebrate.stats(), Data.tasks(), Levels.state()
       ]);
       const R = 68, C = 2 * Math.PI * R;
+      /* before Day 1 the badge says the phase, not a day number below 1 */
+      const prePhase = await Data.phaseOf(day);
       const awards = await Awards.unlocked();
       const tier = tierFor(stats.best);
       const done = tasks.filter(t => t.view === 'done');
@@ -74,7 +76,9 @@
 
           <div class="pf-badges">
             <span class="pf-tier" style="background:linear-gradient(135deg,${tier.a},${tier.b})">${tier.n}</span>
-            <span class="pf-day">Day ${day} · wk ${week}</span>
+            <span class="pf-day">${prePhase.pre
+              ? `${prePhase.name} · ${prePhase.toGo}d to Day 1`
+              : `Day ${day} · wk ${week}`}</span>
           </div>
 
           <p class="pf-goal-k">Goal of this month</p>

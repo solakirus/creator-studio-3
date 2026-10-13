@@ -86,7 +86,7 @@
             return `
               <article class="seqcard${all ? ' all' : ''}">
                 <button class="sc-head" data-seq="${b.id}">
-                  <span class="dot" style="background:${b.day ? 'var(--orange)' : 'var(--dim)'}"></span>
+                  <span class="dot" style="background:${b.day != null ? 'var(--orange)' : 'var(--dim)'}"></span>
                   <span class="t">
                     <b>${esc(b.title)}</b>
                     ${setupTag(b)}
@@ -182,7 +182,7 @@
           if(ev.target.closest('[data-blank]')){
             const b = { id:uid('b'), title:`Sequence ${(act.beats || []).length + 1}`,
                         purpose:'', setup:'talking', script:'', sourceId:null, shots:[],
-                        day:act.day || null, at:null, done:false, clipId:null };
+                        day:act.day ?? null, at:null, done:false, clipId:null };
             act.beats.push(b);
             await save();
             App.closeSheet();
@@ -272,7 +272,7 @@
             if(!target || target.id === act.id) return App.closeSheet();
 
             act.beats = act.beats.filter(x => x.id !== b.id);
-            b.day = target.day || b.day || null;
+            b.day = target.day ?? b.day ?? null;
             target.beats.push(b);
 
             await save();
@@ -291,7 +291,7 @@
       }
 
       if(e.target.closest('[data-a="setdate"]')){
-        const field = await U.dayField('dd', act.day || today);
+        const field = await U.dayField('dd', act.day ?? today);
         /* taking a date off has to take its tasks with it, or you are left with
            shoot tasks on a day nothing is scheduled for any more */
         const onTasks = (act.beats || []).filter(b => b.taskId).length;
@@ -308,7 +308,7 @@
             <button class="btn-primary" data-save>Set the day</button>
             <button class="btn-ghost" data-cancel>Cancel</button>
           </div>
-          ${act.day ? `<button class="btn-ghost" data-clear
+          ${act.day != null ? `<button class="btn-ghost" data-clear
             style="width:100%;margin:12px 0 0;color:var(--red);border-color:rgba(226,86,74,.45)">
             Take the date off</button>
           <p class="note">They go back to "no day yet" and leave the shoot days.${

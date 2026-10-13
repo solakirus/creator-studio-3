@@ -90,7 +90,7 @@
       /* the day it is shot, chosen as a date — a program-day counter is
          unreadable once the numbers get large, and the date is the thing you
          actually think in */
-      let chosen = r.day || null;
+      let chosen = r.day ?? null;
 
       function readBack(){
         const line = $('#vd-read');

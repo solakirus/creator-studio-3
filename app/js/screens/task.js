@@ -235,12 +235,15 @@
       return `
       <div class="block fold${fold.details ? ' open' : ''}" data-fold="details">
         <h4><svg class="fcv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-          Details<span class="cnt">${t.cad} · ${PRI_LABEL[t.pri]}</span></h4>
+          Details<span class="cnt">${[t.cad, PRI_LABEL[t.pri]]
+            .filter(Boolean).join(' · ') || 'not set'}</span></h4>
         <div class="fbody">
           <div class="metaline" style="margin:0">
             <button class="btn-sm" data-a="when">${t.at ? fmtTime(t.at) : 'No time'} · ${dayLabel(t.day)}</button>
-            <button class="btn-sm" data-a="cad">${t.cad}</button>
-            <button class="btn-sm" data-a="pri">${PRI_LABEL[t.pri]}</button>
+            <!-- these two stay visible even when unset — they are how you set
+                 them — so they say so rather than naming a missing value -->
+            <button class="btn-sm" data-a="cad">${t.cad || 'No cadence'}</button>
+            <button class="btn-sm" data-a="pri">${PRI_LABEL[t.pri] || 'No priority'}</button>
           </div>
           ${t.prog ? `<p style="margin:12px 0 0;color:var(--muted);font-size:14px">Target · ${t.prog}</p>` : ''}
         </div>
@@ -334,8 +337,13 @@
         })() : ''}
         <div class="block">
           <div class="metaline" style="margin:0">
-            <span class="tg">${t.cad}</span>
-            <span class="tg count" style="color:var(--${t.pri === 'low' ? 'low' : t.pri === 'med' ? 'med' : 'high'})">${PRI_LABEL[t.pri]}</span>
+            <!-- Not every path that makes a task sets these: one from a clip, a
+                 shot, a quick capture or a vlog day has neither, and the tag
+                 printed the missing value as a word on the detail page. -->
+            ${t.cad ? `<span class="tg">${t.cad}</span>` : ''}
+            ${PRI_LABEL[t.pri] ? `<span class="tg count" style="color:var(--${
+              t.pri === 'low' ? 'low' : t.pri === 'med' ? 'med' : 'high'})">${
+              PRI_LABEL[t.pri]}</span>` : ''}
             <span class="tg count">${dayLabel(t.day)}</span>
             ${t.at ? `<span class="tg count">${fmtTime(t.at)}</span>` : ''}
             ${t.view === 'done' ? `<span class="tg count" style="color:var(--green)">Done</span>` : ''}

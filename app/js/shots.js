@@ -86,7 +86,7 @@
           partly: false,
           source: 'beat', sourceId: b.id, vlogId: v.id,
           sourceName: `${v.title} · ${b.title}`,
-          day: b.day || null, at: b.at || '',
+          day: b.day ?? null, at: b.at || '',
           kind: 'shoot'
         });
       });

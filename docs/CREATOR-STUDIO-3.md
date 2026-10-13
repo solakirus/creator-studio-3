@@ -227,6 +227,19 @@ parsed fine. The recurring ones, so you can check for them directly:
    siblings fight for the height and one collapses to nothing. A fixed strip
    above a hosted screen must not be a `.view`.
 7. **A renamed tool tile whose route key was never added.**
+8. **Truthiness on a day number.** Day numbers run below 1 — day 0 is the day
+   before Day 1, a real date — so `if(x.day)` and `x.day || null` silently drop
+   it. Seventeen spots had it. Use `!= null` and `?? null`.
+9. **`${t.something}` on a field not every creation path sets.** A task made
+   from a clip, a shot, a quick capture or a vlog day has no cadence and no
+   priority, and three places printed the missing value as a word on screen.
+10. **Writing the program start without shifting the stored day numbers.**
+   Everything is stored by day and week number, so that slides every plan onto
+   a different real date. Go through `Data.moveStart`, never `setProgram`.
+
+`app/tests/checks.test.js` checks for 1, 2, 3, 5, 7, 8 and 10 directly — run it
+after any edit; it is cheap and it catches the bugs that parse fine and then
+take the app down on the device.
 
 **The discipline that catches these:** after any edit, run the screen against a
 stub DOM — stub `Store`, `U`, `Data`, `Screens`, `App`, capture `innerHTML`,

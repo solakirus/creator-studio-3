@@ -266,9 +266,18 @@
     App.sheet(`
       <h2>Program start</h2>
       <p style="margin:0 0 16px;color:var(--muted);font-size:15px;line-height:1.55">
-        Day 1 is this date. The count runs on from there with no end — Today opens on whatever day it is now.</p>
+        Day 1 is this date. The count runs on from there with no end — Today opens on whatever day it is now.
+        <b>Moving the start never moves your plans:</b> everything keeps the real
+        date it was planned for, and the day numbers shift instead.</p>
       <div class="field"><label for="ps-date">Start date</label>
         <input id="ps-date" type="date" value="${iso}"></div>
+      <div class="field"><label for="ps-pre">Name for the days before Day 1</label>
+        <input id="ps-pre" type="text" value="${String(p.preName || 'Prep')
+          .replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" placeholder="Prep">
+        <div class="opts" style="margin-top:8px">
+          <button type="button" class="opt" data-pre="Prep">Prep</button>
+          <button type="button" class="opt" data-pre="Red phase">Red phase</button>
+        </div></div>
       <div class="field"><label>Quick set</label><div class="opts">
         <button type="button" class="opt" data-quick="oct1">Oct 1 this year</button>
         <button type="button" class="opt" data-quick="today">Today</button>
@@ -306,15 +315,28 @@
           refresh();
           return;
         }
+        const pb = e.target.closest('[data-pre]');
+        if(pb){
+          const f = sheetEl.querySelector('#ps-pre');
+          if(f) f.value = pb.dataset.pre;
+          return;
+        }
         if(e.target.closest('[data-cancel]')) return App.closeSheet();
         if(!e.target.closest('[data-save]')) return;
 
         const start = new Date(input.value + 'T00:00');
         if(isNaN(start)) return U.toast('Pick a valid date');
-        await Data.setProgram({ start: start.getTime() });
+
+        /* moveStart, not setProgram: everything is stored by day and week
+           number, so writing the new start on its own would slide every task,
+           beat and milestone onto a different real date. */
+        const pre = (sheetEl.querySelector('#ps-pre') || {}).value;
+        const r = await Data.moveStart(start.getTime(), pre);
         Data.invalidate('program');
         App.closeSheet();
-        U.toast('Start date saved');
+        U.toast(r && r.days
+          ? `Start moved — ${r.tasks} task${r.tasks === 1 ? '' : 's'} kept their dates`
+          : 'Start date saved');
         after && after();
       });
     });

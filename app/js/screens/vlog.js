@@ -645,8 +645,8 @@
             </div>
           </details>` : ''}
         <div class="bm">
-          <button class="timechip${b.day ? '' : ' none'}" data-sched="${b.id}">
-            ${ICON.clock}${b.day ? `${dayLabel(b.day)}${b.at ? ' · ' + fmtTime(b.at) : ''}` : 'schedule'}</button>
+          <button class="timechip${b.day != null ? '' : ' none'}" data-sched="${b.id}">
+            ${ICON.clock}${b.day != null ? `${dayLabel(b.day)}${b.at ? ' · ' + fmtTime(b.at) : ''}` : 'schedule'}</button>
           ${(b.shots || []).length ? `<span class="tg count">${shotsDone}/${b.shots.length} shots</span>` : ''}
           ${b.taskId ? `<span class="tg" style="color:var(--orange);border-color:rgba(251,105,0,.4)">on your day</span>` : ''}
           ${(() => {
@@ -780,7 +780,7 @@
             <button class="act-h" data-toggle="${act.id}">
               <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               <span class="t"><b>${act.title}</b>
-                <small>${act.beats.length} beat${act.beats.length===1?'':'s'}${act.day ? ` · ${dayLabel(act.day)}` : ''}</small></span>
+                <small>${act.beats.length} beat${act.beats.length===1?'':'s'}${act.day != null ? ` · ${dayLabel(act.day)}` : ''}</small></span>
               <span class="tg count">${act.beats.filter(b => b.done).length}/${act.beats.length}</span>
             </button>
             ${act.open ? `
@@ -789,7 +789,7 @@
                 <button class="addbeat" data-addbeat="${act.id}">+ Add a beat</button>
               </div>
               <div class="act-tools">
-                <button data-actday="${act.id}">${act.day ? dayLabel(act.day) : 'Set date'}</button>
+                <button data-actday="${act.id}">${act.day != null ? dayLabel(act.day) : 'Set date'}</button>
                 <button data-actname="${act.id}">Rename</button>
                 <button data-actmove="up:${act.id}" ${ai===0?'disabled':''}>↑</button>
                 <button data-actmove="down:${act.id}" ${ai===v.acts.length-1?'disabled':''}>↓</button>
@@ -945,7 +945,7 @@
           if(!target || target.id === from.id) return App.closeSheet();
 
           from.beats = from.beats.filter(x => x.id !== b.id);
-          b.day = target.day || b.day || null;      /* the block's date, if it has one */
+          b.day = target.day ?? b.day ?? null;      /* the block's date, if it has one */
           target.beats.push(b);
 
           await save();
@@ -1138,7 +1138,7 @@
           return `
             <button class="dayrow" data-day="${act.id}">
               <span class="dr-t">
-                <b>${act.title}${act.day ? ` · ${dayLabel(act.day)}` : ''}</b>
+                <b>${act.title}${act.day != null ? ` · ${dayLabel(act.day)}` : ''}</b>
                 <small>${items.length
                   ? [`${items.length} sequence${items.length === 1 ? '' : 's'}`,
                      (() => {
@@ -1350,7 +1350,7 @@
     };
 
     async function scheduleBeat(b){
-      const field = await U.dayField('bd', b.day || today);
+      const field = await U.dayField('bd', b.day ?? today);
       App.sheet(`
         <h2>Schedule this beat</h2>
         <p style="margin:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.55">
@@ -1499,7 +1499,7 @@
       if(ab){
         const a = v.acts.find(x => x.id === ab.dataset.addbeat);
         const b = { id:uid('b'), title:`Sequence ${(a.beats || []).length + 1}`,
-                    purpose:'', shots:[], day:a.day || null, at:null, done:false, clipId:null };
+                    purpose:'', shots:[], day:a.day ?? null, at:null, done:false, clipId:null };
         a.beats.push(b); await save();
         return Screens.push('vlog-beat', { vlogId:v.id, beatId:b.id,
           onChange:async () => { await load(); render(); } });
@@ -1507,7 +1507,7 @@
       const ad = e.target.closest('[data-actday]');
       if(ad){
         const a = v.acts.find(x => x.id === ad.dataset.actday);
-        const field = await U.dayField('ad', a.day || today);
+        const field = await U.dayField('ad', a.day ?? today);
         App.sheet(`<h2>${a.title}</h2>
           <p style="margin:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.55">
             Setting a date here schedules every beat in this act onto it.</p>
@@ -1703,7 +1703,7 @@
           <div class="group compact" style="margin:0 0 14px;max-height:34vh;overflow-y:auto">
             ${items.map(x => `<div class="row" style="cursor:default">
               <span class="lbl">${x.beat.title}<small>${
-                x.beat.day ? dayLabel(x.beat.day) : 'no day yet'}${
+                x.beat.day != null ? dayLabel(x.beat.day) : 'no day yet'}${
                 (x.beat.shots || []).length ? ' · ' + x.beat.shots.length + ' shots' : ''}</small></span>
             </div>`).join('')}
           </div>
@@ -1798,7 +1798,7 @@
         const b = { id:uid('b'), title:`Sequence ${(act.beats || []).length + 1}`,
                     purpose:'', setup:'talking', script:'', sourceId:null, shots:[],
                     /* takes the day it was added to, so it is already scheduled */
-                    day:act.day || null, at:null, done:false, clipId:null };
+                    day:act.day ?? null, at:null, done:false, clipId:null };
         act.beats.push(b);
         await save();
         return Screens.push('vlog-beat', { vlogId:v.id, beatId:b.id,
@@ -1810,7 +1810,7 @@
         const b = { id:uid('b'), title:`Sequence ${(act.beats || []).length + 1}`,
                     purpose:'', setup:'talking', script:'', sourceId:null, shots:[],
                     /* takes the day it was added to, so it is already scheduled */
-                    day:act.day || null, at:null, done:false, clipId:null };
+                    day:act.day ?? null, at:null, done:false, clipId:null };
         act.beats.push(b);
         await save();
         return Screens.push('vlog-beat', { vlogId:v.id, beatId:b.id,
@@ -1997,7 +1997,7 @@
           <h4>Scheduling</h4>
           <div class="metaline" style="margin:0">
             <button class="btn-sm" data-a="sched">
-              ${b.day ? `${dayLabel(b.day)}${b.at ? ' · ' + fmtTime(b.at) : ''}` : 'Not scheduled'}</button>
+              ${b.day != null ? `${dayLabel(b.day)}${b.at ? ' · ' + fmtTime(b.at) : ''}` : 'Not scheduled'}</button>
           </div>
         </div>
 
@@ -2146,7 +2146,7 @@
 
       if(a.dataset.a === 'sched'){
         const today = await Data.currentDay();
-        const field = await U.dayField('bd', b.day || today);
+        const field = await U.dayField('bd', b.day ?? today);
         App.sheet(`<h2>Schedule this beat</h2>
           ${field}
           <div class="field"><label for="ba">Time</label>
@@ -2178,7 +2178,7 @@
         const c = await Data.saveClip({
           title: b.title,
           plat:'youtube',
-          stage: b.done ? 'shot' : (b.day ? 'planned' : 'idea'),
+          stage: b.done ? 'shot' : (b.day != null ? 'planned' : 'idea'),
           seriesId: v.seriesId || null,
           channel,
           shots: (b.shots || []).map(sh => sh.text || sh.name || String(sh)).filter(Boolean),

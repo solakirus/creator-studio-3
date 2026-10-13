@@ -20,7 +20,12 @@ const src = Object.fromEntries(js.map(f => [path.relative(A, f), fs.readFileSync
 const html = fs.readFileSync(A + 'index.html', 'utf8');
 
 console.log('\nidentity');
-ok(/const DB_NAME = 'creator-studio-3';/.test(src['js/store.js']), 'own database, never v2\'s');
+/* The default must be CS3's own database. A CS_DB_NAME override is allowed so
+   tests can use a throwaway one, but nothing may name v2's database. */
+ok(/const DB_NAME = (?:global\.CS_DB_NAME \|\| )?'creator-studio-3';/.test(src['js/store.js']),
+  'own database by default, never v2\'s');
+ok(!/'creator-studio'(?!-)/.test(src['js/store.js']),
+  'and v2\'s database name appears nowhere');
 ok(/<title>Creator Studio 3<\/title>/.test(html), 'title says Creator Studio 3');
 const nativeDir = path.join(ROOT, 'native');
 const nat = fs.readdirSync(nativeDir).filter(f => /\.(java|xml)$/.test(f))
@@ -81,6 +86,28 @@ ok(!/fonts\.googleapis|fonts\.gstatic/.test(board), 'no Google Fonts in the boar
 const fcss = fs.readFileSync(A + 'board/fonts/board-fonts.css', 'utf8');
 const missingFonts = [...fcss.matchAll(/url\('([^']+)'\)/g)].map(m => m[1]).filter(f => !fs.existsSync(A + 'board/fonts/' + f));
 ok(!missingFonts.length, 'every board font file is there', missingFonts.join(' '));
+
+console.log('\na newer database never takes the app down');
+ok(/VersionError/.test(src['js/store.js']), 'store.js falls back to opening it as-is');
+
+console.log('\nmoving Day 1 never moves the plans');
+const set = src['js/screens/settings.js'];
+ok(/Data\.moveStart\(/.test(set), 'the start-date sheet calls moveStart');
+/* The bug this replaces: writing the new start on its own, which slides every
+   task and beat onto a different real date. */
+ok(!/await Data\.setProgram\(\{ start:/.test(set),
+  'and never writes the start on its own');
+ok(/function moveStart/.test(src['js/data.js']), 'and data.js provides it');
+
+console.log('\nday 0 is a real date, not a missing day');
+/* Day numbers run below 1 — the run-up to Day 1 — so a truthiness test on a
+   day silently drops day 0. These are the spots it was wrong in. */
+const dayTruthy = Object.entries(src)
+  .flatMap(([f, s]) => s.split('\n').map((l, i) => [f, i + 1, l]))
+  .filter(([f, , l]) =>
+    /\.day \|\| null|\.day \? ` · day |filter\(\w+ => \w+\.at && \w+\.day &&/.test(l))
+  .map(([f, n]) => `${f}:${n}`);
+ok(!dayTruthy.length, 'no day read through a truthiness test', dayTruthy.join(' '));
 
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks pass');
 process.exit(fails ? 1 : 0);
