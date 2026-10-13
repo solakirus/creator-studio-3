@@ -2123,8 +2123,13 @@ function zoomAt(cx, cy, f) {
   applyView(); saveView();
 }
 function zoomCenter(f) { const r = stage.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); }
-function fit() {
-  const cs = cardsOf(state.board).filter(c => !c.inTab), r = stage.getBoundingClientRect();
+/* With no argument this frames the whole board. Given a list it frames just
+   those cards — which is how "open the board on Tuesday" works: the app asks
+   for one day and the board shows that day's sections, in place, rather than
+   opening a separate board per day. */
+function fit(only) {
+  const all = cardsOf(state.board).filter(c => !c.inTab);
+  const cs = (only && only.length) ? only : all, r = stage.getBoundingClientRect();
   if (!cs.length) { view = { x: 90, y: 60, z: 1 }; applyView(); saveView(); return; }
   let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
   cs.forEach(c => { const el = cardEl(c.id); x1 = Math.min(x1, c.x); y1 = Math.min(y1, c.y); x2 = Math.max(x2, c.x + (el?.offsetWidth || c.w)); y2 = Math.max(y2, c.y + (el?.offsetHeight || 120)); });
@@ -3748,10 +3753,21 @@ async function cs3Pull(boardId) {
       let f = frames.get(beat.id);
       if (!f) {
         const width = CS3.PAD * 2 + Math.max(3, beat.shots.length) * (CS3.SHOT_W + CS3.GAP) - CS3.GAP;
-        f = mk(boardId, 'frame', 0, nextY, { title: beat.act ? `${beat.title}` : beat.title, beat: beat.id }, width);
+        /* The section is named for the sequence and tagged with the day it
+           belongs to, so "show me Tuesday" has something to match on. The day
+           is kept in data rather than baked into the title, which the episode
+           owns and writes back. */
+        f = mk(boardId, 'frame', 0, nextY, { title: beat.title, beat: beat.id,
+          act: beat.actId || '', actName: beat.act || '' }, width);
         f.h = CS3.ROW_H; save(f, true);
         nextY += CS3.ROW_H + 60;
-      } else if (f.data.title !== beat.title) { f.data.title = beat.title; save(f, true); }
+      } else {
+        let dirty = false;
+        if (f.data.title !== beat.title) { f.data.title = beat.title; dirty = true; }
+        if (f.data.act !== (beat.actId || '')) { f.data.act = beat.actId || ''; dirty = true; }
+        if (f.data.actName !== (beat.act || '')) { f.data.actName = beat.act || ''; dirty = true; }
+        if (dirty) save(f, true);
+      }
       beat.shots.forEach((s, j) => {
         live.add(s.id);
         const prog = { got: s.got, want: s.want, done: s.done, sent: s.sent };
@@ -4027,6 +4043,25 @@ function openFromHash() {
       { name: q.get('name') || '', status: q.get('status') || '', due: q.get('due') || '' });
   }
   if (target && state.items.get(target)) { if (state.mode !== 'canvas') setMode('canvas'); openBoard(target); }
+
+  /* focus=act:<id> — show one day of the episode rather than the whole board.
+     It runs after the sections have been made, and falls back to the whole
+     board when that day has no sections yet, which is better than an empty
+     stage with nothing to explain it. */
+  const focus = q.get('focus');
+  if (focus && focus.startsWith('act:')) {
+    const actId = focus.slice(4);
+    setTimeout(() => {
+      const rows = cardsOf(state.board).filter(c => c.type === 'frame' && c.data && c.data.act === actId);
+      if (!rows.length) return;
+      const ids = new Set(rows.map(r => r.id));
+      const cards = cardsOf(state.board).filter(c => ids.has(c.id) ||
+        (c.type !== 'frame' && rows.some(r => c.x >= r.x && c.x < r.x + r.w && c.y >= r.y && c.y < r.y + (r.h || 380))));
+      fit(cards);
+      const name = rows[0].data.actName;
+      if (name && typeof toast === 'function') toast('Showing ' + name);
+    }, 60);
+  }
 }
 window.CS3Board = { openFromHash, videoBoardId, items: () => state.items, current: () => state.board,
   _: { mk, save, add, deleteCards, cardsOf } };   /* _ is for the browser tests */

@@ -77,7 +77,11 @@
     return {
       id: v.id, title: v.title,
       beats: beatsOf(v).map(({ act, beat }) => ({
+        /* The day travels with every sequence: its id so the board can be
+           asked to show one day, and its title and number so the section can
+           say which day it belongs to without a second lookup. */
         id: beat.id, title: beat.title || 'Untitled sequence', act: act.title || '',
+        actId: act.id, actDay: act.day != null ? act.day : null,
         shots: (beat.shots || []).map(s => {
           const t = tw.get(s.id);
           const want = t ? ((t.shot.angles || []).length || Coverage.ANGLE_TARGET) : 1;

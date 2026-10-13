@@ -450,3 +450,34 @@ handwriting step, not the mapping.
 
 **Tests:** `node app/tests/paper-full.test.js` — 30 checks, including the
 journal writer run for real against a fake store.
+
+## A day's visuals on the episode's board (2026-10-13)
+
+The episode↔board sync already existed: every episode has one board
+(`vb-vlog-<id>`), each sequence is a Section, each shot a card, and edits go
+both ways. What was missing was the **day**.
+
+`boardsync.js` was already sending `act` (the day's title) with every
+sequence, and `board.html` threw it away in a ternary whose branches were
+identical:
+
+```js
+title: beat.act ? `${beat.title}` : beat.title     // did nothing either way
+```
+
+Now each sequence carries `actId` and `actDay` too, and the Section stores
+`act` and `actName` in its data — not in the title, which the episode owns and
+writes back. Sections made before this get tagged the next time the board
+opens.
+
+**Each day in the episode has a Board button** (beside its date and Rename).
+It opens the *same* board with `focus=act:<id>`, and `fit()` now takes an
+optional subset so the board frames that day's sections instead of the whole
+week. A week is one board; a day is a view of it. If the day has no sequences
+yet the button says so rather than opening an empty stage.
+
+**Tests:** `node app/tests/board-day.test.js` (22 checks on the chain), and
+`xvfb-run node app/tests/browser/boardday.browser.js` which drives the real
+canvas: two days, opens one, and checks that row ends up centred on the stage
+and that the episode is unchanged by looking at it. Run `bash build-preview.sh`
+in `app/` first — the browser tests load the single-file preview.

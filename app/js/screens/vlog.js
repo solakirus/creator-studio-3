@@ -790,6 +790,9 @@
               </div>
               <div class="act-tools">
                 <button data-actday="${act.id}">${act.day != null ? dayLabel(act.day) : 'Set date'}</button>
+                <!-- the same board as the episode's, opened on this day's
+                     sections rather than the whole week -->
+                <button data-actboard="${act.id}">Board</button>
                 <button data-actname="${act.id}">Rename</button>
                 <button data-actmove="up:${act.id}" ${ai===0?'disabled':''}>↑</button>
                 <button data-actmove="down:${act.id}" ${ai===v.acts.length-1?'disabled':''}>↓</button>
@@ -1504,6 +1507,20 @@
         return Screens.push('vlog-beat', { vlogId:v.id, beatId:b.id,
           onChange:async () => { await load(); render(); } });
       }
+      /* One day's visuals. Same board as the episode's — a week is one board —
+         opened showing only this day's sections, so you can draw and arrange
+         Tuesday without the rest of the week in the way. */
+      const abd = e.target.closest('[data-actboard]');
+      if(abd){
+        const a = v.acts.find(x => x.id === abd.dataset.actboard);
+        if(!a) return;
+        if(!(a.beats || []).length)
+          return U.toast('Add a beat to this day first — the board draws a section per beat');
+        return BoardLink.open({ type:'vlog', id:v.id, name:v.title,
+          kicker: a.title || 'Day', focus:`act:${a.id}`,
+          onChange: async () => { await load(); render(); } });
+      }
+
       const ad = e.target.closest('[data-actday]');
       if(ad){
         const a = v.acts.find(x => x.id === ad.dataset.actday);

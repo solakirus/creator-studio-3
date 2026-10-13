@@ -16,8 +16,9 @@
   /* must match videoBoardId() in board/board.html */
   const boardIdFor = (type, id) => `vb-${type}-${String(id).replace(/[^\w-]/g, '_')}`;
 
-  /* opts: { type:'vlog'|'clip', id, name, status, due, kicker, onChange } — a video's board
-           { board:<id> } — a particular board;  { side:true } — the boards list */
+  /* opts: { type:'vlog'|'clip', id, name, status, due, kicker, focus, onChange } — a video's board
+           { board:<id> } — a particular board;  { side:true } — the boards list
+     focus:'act:<id>' frames one day's sections instead of the whole board. */
   function open(opts){
     const o = opts || {};
     return Screens.push('board', o);
@@ -33,6 +34,8 @@
       if(o.due) q.set('due', o.due);
     } else if(o.board) q.set('board', o.board);
     if(o.side) q.set('side', '1');
+    /* focus=act:<id> opens a video's board showing one day's sections */
+    if(o.focus) q.set('focus', o.focus);
     return q.toString();
   }
 

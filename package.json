@@ -18,17 +18,39 @@
   "build": {
     "appId": "com.solakirus.creatorstudio3",
     "productName": "Creator Studio 3",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["electron/**", "www/**", "build/icon.png"],
-    "protocols": [{ "name": "Creator Studio 3", "schemes": ["cs3"] }],
-    "win": { "icon": "build/icon.ico", "target": ["nsis", "portable"] },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "www/**",
+      "build/icon.png"
+    ],
+    "protocols": [
+      {
+        "name": "Creator Studio 3",
+        "schemes": [
+          "cs3"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "Creator Studio 3"
     },
-    "portable": { "artifactName": "CreatorStudio3-portable-${version}.exe" }
+    "portable": {
+      "artifactName": "CreatorStudio3-portable-${version}.exe"
+    }
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
@@ -36,7 +58,8 @@
     "@capacitor/core": "^7.0.0",
     "@capacitor/filesystem": "^7.0.0",
     "@capacitor/local-notifications": "^7.0.0",
-    "@capacitor/share": "^7.0.0"
+    "@capacitor/share": "^7.0.0",
+    "playwright-core": "^1.64.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
