@@ -123,6 +123,11 @@
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
         ${row(D.down,'Restore from backup','A Creator Studio JSON file','data-go="restore"')}
         ${row(D.down,'Open a plan pack','From the laptop Planner or the Reference Library — safe to open twice','data-go="planpack"')}
+        <!-- First in the group on purpose: the automatic one is the one that
+             saves you, and it only works if you can see that it is working. -->
+        <button class="row" data-go="autobackup"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${D.up}"/></svg>
+          <span class="lbl">Automatic backup<small id="bkLine">checking…</small></span>
+          <i class="bkdot" id="bkDot"></i>${chev}</button>
         ${row(D.up,'Export everything','Every record and picture — for the other device or a new phone','data-go="backup"')}
         ${row(D.up,'Export as spreadsheets','CSV files that open in Notion or Sheets','data-go="csvout"')}
         ${row(D.grid,'Load sample content','Meals, series and clips to try things out','data-go="samples"')}
@@ -177,6 +182,30 @@
       t.setAttribute('aria-checked', String(await Notify.isEnabled()));
       if(!Notify.available() && note)
         note.textContent = 'Only available in the installed app, not the browser';
+    })();
+
+    /* the backup line, in plain words and a colour you can read at a glance */
+    (async () => {
+      const line = el.querySelector('#bkLine'), dot = el.querySelector('#bkDot');
+      /* window, not global: this file is wrapped (function(){…})() and has no
+         `global` — reaching for one throws at boot and takes the app down */
+      if(!line || !window.Backup) return;
+      try {
+        const s = await Backup.status();
+        if(dot) dot.className = 'bkdot ' + s.tone;
+        const kb = s.size ? ' · ' + (s.size > 1048576
+          ? (s.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(s.size / 1024)) + ' KB') : '';
+        line.textContent = s.off ? 'Turned off'
+          /* "needs you" is not an error, so it is checked first — otherwise an
+             iPad reads as broken every day and the light stops meaning anything */
+          : (s.when === 'never' && !s.silent && !s.server)
+            ? 'This device needs a tap — open this to save one'
+          : s.error ? 'Last tried and failed — ' + s.error
+          : s.when === 'never'
+            ? (s.silent ? 'Not yet — open this to run the first one'
+                        : 'This device cannot save one on its own — tap to set it up')
+            : 'Saved ' + s.when + kb + (s.where ? ' · ' + s.where.replace(/^file:/, '') : '');
+      } catch(e){ line.textContent = 'Could not check'; }
     })();
 
     /* show the live start date in the row */
@@ -237,6 +266,7 @@
       if(go.dataset.go === 'restore')   return openRestore();
       if(go.dataset.go === 'planpack')  return openPlanPack();
       if(go.dataset.go === 'ai')        return ShotAI.openSettings();
+      if(go.dataset.go === 'autobackup') return openAutoBackup(() => mount(el));
       if(go.dataset.go === 'backup')    return doBackup();
       if(go.dataset.go === 'csvout')    return doSheets();
 
@@ -255,6 +285,72 @@
       if(go.dataset.go === 'notifydiag') return openNotifyDiag();
       if(go.dataset.go === 'wipe')      return openWipe();
       Screens.push(go.dataset.go);
+    });
+  }
+
+  /* ---------- automatic backup ----------
+
+     Deliberately plain about what it can and cannot do on this device. A
+     backup people half-trust is worse than none, because they stop making the
+     other kind. */
+  async function openAutoBackup(after){
+    /* settings.js has no module-scope esc(); this sheet puts a URL the user
+       typed back into an attribute, so it needs one */
+    const esc = t => String(t == null ? '' : t)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const s = await Backup.status();
+    const ago = d => !d ? 'never' : new Date(d).toLocaleString(undefined,
+      { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+
+    App.sheet(`
+      <h2>Automatic backup</h2>
+      <p style="margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.55">
+        ${s.silent
+          ? `A copy of everything is written to <b>Documents / ${esc(Backup.FOLDER)}</b> once a day,
+             and the last ${7} are kept. That folder is outside the app, so it survives
+             the app being uninstalled.`
+          : `This device can't write a file on its own — that's iPhones and iPads,
+             and any browser. Tap <b>Back up now</b> and choose where to save it;
+             once a week is plenty. Pointing it at a server below makes it automatic here too.`}</p>
+
+      <div class="block" style="margin:0 0 14px">
+        <div class="metaline" style="margin:0">
+          <span class="tg count">Records · ${esc(ago(s.at))}</span>
+          ${s.full ? `<span class="tg count">With pictures · ${esc(ago(s.full))}</span>` : ''}
+        </div>
+        ${s.error ? `<p class="hintline" style="margin:9px 0 0;color:var(--red)">${esc(s.error)}</p>` : ''}
+      </div>
+
+      <div class="field"><label for="bk-srv">Also send to a server (optional)</label>
+        <input id="bk-srv" type="url" inputmode="url" placeholder="http://nastime.local:8080/backups"
+          value="${esc(s.server || '')}">
+        <p class="hintline" style="margin:7px 0 0">A PUT of the file to that address, named by date.
+          Leave it empty if you don't want one. This is what makes the iPad automatic.</p></div>
+
+      <label class="pp-chk" style="margin:4px 0 2px"><input type="checkbox" id="bk-off" ${s.off ? 'checked' : ''}>
+        <span>Stop backing up automatically</span></label>
+
+      <div class="sheetcta">
+        <button class="btn-primary" data-run>Back up now</button>
+        <button class="btn-ghost" data-save>Save settings</button>
+      </div>`, sheetEl => {
+      sheetEl.addEventListener('click', async e => {
+        if(e.target.closest('[data-save]')){
+          await Backup.setServer((sheetEl.querySelector('#bk-srv') || {}).value || '');
+          await Backup.setOff((sheetEl.querySelector('#bk-off') || {}).checked);
+          App.closeSheet(); U.toast('Saved'); after && after(); return;
+        }
+        if(!e.target.closest('[data-run]')) return;
+        const btn = e.target.closest('[data-run]');
+        btn.disabled = true; btn.textContent = 'Backing up…';
+        /* save the server first, so "set it and run it" is one tap not two */
+        await Backup.setServer((sheetEl.querySelector('#bk-srv') || {}).value || '');
+        const r = await Backup.run('records', { manual:true });
+        App.closeSheet();
+        U.toast(r.ok ? 'Backed up — ' + r.done.join(', ').replace(/file:/, '')
+                     : 'Could not back up: ' + (r.failed[0] || r.error || 'nowhere to write it'));
+        after && after();
+      });
     });
   }
 

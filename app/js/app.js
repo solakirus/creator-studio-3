@@ -400,6 +400,16 @@
     catch(e){ console.warn('Could not listen for notification taps', e); }
   })();
 
+  /* The day's backup, well after the app is usable — it reads every store, so
+     it must never be between the person and the first paint. Silent either
+     way: Settings → Automatic backup is where it reports. */
+  function backupWhenIdle(){
+    if(!global.Backup) return;
+    const run = () => Backup.auto();
+    if(global.requestIdleCallback) requestIdleCallback(run, { timeout: 15000 });
+    else setTimeout(run, 6000);
+  }
+
   global.App = { go, goBack, refreshTab, sheet, closeSheet, pickImage, reloadToolIcons, TOOLS, PRESETS };
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => { init(); backupWhenIdle(); });
 })(window);

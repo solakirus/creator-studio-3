@@ -566,3 +566,58 @@ served and a single rooted `/` path would pass locally and break there — then
 installs it, writes a task, reloads, pulls the network, and checks the app
 still opens with the task intact and **zero** requests reaching the server.
 `npm run site` does the stamp-and-check locally.
+
+## Backup (2026-10-15)
+
+On 13 Oct 2026 v2 was uninstalled from the phone and the database went with it.
+What came back came back from a laptop LevelDB that happened to hold a stale
+plan pack. `js/backup.js` exists so that cannot repeat.
+
+**The rule: a backup inside the app is not a backup.** Every sink writes
+outside the app's own storage.
+
+| sink | where | when |
+|---|---|---|
+| file | `Documents/Creator Studio backups/` | daily, automatic |
+| server | a PUT to a configured URL (nastime) | same run, if set |
+| download | the save dialog | iOS and browsers, on a tap |
+
+`Documents` is shared storage and survives uninstall — that is the whole
+point, and `checks.test.js` fails if the code ever writes to `CACHE` instead,
+which is inside the app and would have gone with it.
+
+**Records daily, pictures weekly.** `Transfer.exportAll({photos:false})` is
+tens of KB, so seven are kept. With pictures it can be hundreds of MB, so that
+runs weekly and keeps two. Losing a week of photos is a bad day; losing the
+records is the year.
+
+**It runs itself**, on an idle callback after boot, never before first paint —
+it reads every store. Nothing is toasted; Settings → **Automatic backup** is
+where it reports, with a light: green today, amber a few days, red at a week.
+A backup whose state you cannot see is one you are only assuming works.
+
+**Android and Windows share one code path.** The Electron preload already
+offered a Capacitor-shaped `Filesystem`; `stat`, `readdir` and `deleteFile`
+were added to it (and to `main.js`, confined to the same two directories), so
+there is one implementation rather than two to keep in step.
+
+**Things it deliberately does not do:**
+
+- *claim a success it did not have* — the file size is read back after writing,
+  and a short write is a failure. A backup you half-trust is worse than none,
+  because you stop making the other kind
+- *lose the local copy when the server is down* — the sinks are independent;
+  a failed PUT is recorded and the file still lands
+- *paint an iPad red* — a device that cannot write without a tap, and has no
+  server set, is amber and says "needs a tap". An alarm that is always on is
+  one you stop reading
+- *run twice in a day*, or at all once turned off
+
+**Tests:** `node app/tests/backup.test.js` — 32 checks against a fake device,
+including the sweep keeping seven oldest-first, a short write failing, a dead
+server not costing the local copy, and a no-filesystem device refusing to
+pretend. `checks.test.js` guards the invariants.
+
+**For the other apps:** `backup.js` depends only on `Store`, `Transfer` and the
+Capacitor-shaped `Filesystem`. Any of the other apps gains it by shipping the
+file, calling `Backup.auto()` at boot, and adding the Settings row.

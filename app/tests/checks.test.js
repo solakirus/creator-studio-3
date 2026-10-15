@@ -109,5 +109,18 @@ const dayTruthy = Object.entries(src)
   .map(([f, n]) => `${f}:${n}`);
 ok(!dayTruthy.length, 'no day read through a truthiness test', dayTruthy.join(' '));
 
+console.log('\nthere is always a copy outside the app');
+const bk = src['js/backup.js'];
+ok(!!bk, 'backup.js ships');
+/* The whole point is a file the app cannot take with it when it is deleted.
+   CACHE is inside the app's own storage and would go with it. */
+ok(/directory: *'DOCUMENTS'/.test(bk), 'it writes to Documents');
+ok(!/'CACHE'/.test(bk), 'and never to the app\'s own cache');
+ok(/Backup\.auto\(\)/.test(src['js/app.js']), 'and it runs itself on open');
+ok(/data-go="autobackup"/.test(src['js/screens/settings.js']),
+  'with a row in Settings showing when it last ran');
+/* A backup that reports success it did not have is worse than none. */
+ok(/written short/.test(bk), 'a short write is treated as a failure');
+
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks pass');
 process.exit(fails ? 1 : 0);

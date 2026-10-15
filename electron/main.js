@@ -150,6 +150,35 @@ ipcMain.handle('cs3:fs-write', async (e, o) => {
   return { uri: file };
 });
 
+/* The three the backup sweep needs, so Windows walks the same code path as the
+   phone rather than having a second implementation to keep in step. Each is
+   confined to the same two directories as the write above. */
+const underDir = (directory, p) => {
+  const dir = directory === 'DOCUMENTS' ? docsDir() : cacheDir();
+  const file = path.normalize(path.join(dir, p || ''));
+  if (!file.startsWith(dir)) throw new Error('Bad path');
+  return file;
+};
+
+ipcMain.handle('cs3:fs-stat', async (e, o) => {
+  const file = underDir(o.directory, o.path);
+  const s = fs.statSync(file);
+  return { size: s.size, mtime: s.mtimeMs, type: s.isDirectory() ? 'directory' : 'file' };
+});
+
+ipcMain.handle('cs3:fs-readdir', async (e, o) => {
+  const dir = underDir(o.directory, o.path);
+  if (!fs.existsSync(dir)) return { files: [] };
+  return { files: fs.readdirSync(dir, { withFileTypes: true }).map(d => ({
+    name: d.name, type: d.isDirectory() ? 'directory' : 'file' })) };
+});
+
+ipcMain.handle('cs3:fs-delete', async (e, o) => {
+  const file = underDir(o.directory, o.path);
+  if (fs.existsSync(file)) fs.unlinkSync(file);
+  return {};
+});
+
 ipcMain.handle('cs3:share', async (e, o) => {
   const src = (o.files || [])[0];
   if (!src || !fs.existsSync(src)) throw new Error('Nothing to save');

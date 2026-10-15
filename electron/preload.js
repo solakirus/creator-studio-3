@@ -40,7 +40,11 @@ const CapacitorHttp = {
 
 const Filesystem = {
   writeFile: o => ipcRenderer.invoke('cs3:fs-write', {
-    path: o.path, data: o.data, directory: o.directory, encoding: o.encoding })
+    path: o.path, data: o.data, directory: o.directory, encoding: o.encoding }),
+  /* enough for the backup sweep to keep the last few files and drop the rest */
+  stat: o => ipcRenderer.invoke('cs3:fs-stat', { path: o.path, directory: o.directory }),
+  readdir: o => ipcRenderer.invoke('cs3:fs-readdir', { path: o.path, directory: o.directory }),
+  deleteFile: o => ipcRenderer.invoke('cs3:fs-delete', { path: o.path, directory: o.directory })
 };
 
 const Share = {

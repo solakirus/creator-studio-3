@@ -3991,3 +3991,9 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
 /* Safari sizes text up in landscape unless told not to; the planner's pages
    are drawn to a fixed sheet and must not reflow. */
 html{-webkit-text-size-adjust:100%}
+
+/* the backup light in Settings — green today, amber a few days, red a week */
+.bkdot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-right:9px;background:var(--dim)}
+.bkdot.good{background:var(--green)}
+.bkdot.warn{background:var(--amber)}
+.bkdot.bad{background:var(--red)}
