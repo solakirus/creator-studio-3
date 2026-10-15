@@ -8,6 +8,18 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="paper.css">
 <meta name="theme-color" content="#151515">
+
+<!-- Installed as a web app: Safari's Add to Home Screen, and Android's install.
+     Every path here is relative so the same files work from the APK, from
+     Electron, and from a project subpath on GitHub Pages. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Studio">
+<!-- black-translucent puts the page under the status bar; the safe-area insets
+     the layout already uses keep the content clear of it. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <!-- The palette is read and applied before the body renders, or the app flashes
      charcoal and then turns pink on every launch. -->
 <script src="js/palette.js"></script>
@@ -182,5 +194,29 @@
 <div class="demoview" id="demoview"></div>
 <div class="refview" id="refview"></div>
 <div class="pd" id="perfectday"></div>
+
+<!-- Installed-web-app support. Deliberately not registered inside the Android
+     APK or Electron: there the files come off disk already, a worker would add
+     a second cache of them, and a stale one could override the real build. -->
+<script>
+(function(){
+  var native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())
+            || location.protocol === 'file:'
+            || !!(window.process && window.process.versions && window.process.versions.electron);
+  if(native || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(e){
+      console.warn('[sw] not registered:', e && e.message);
+    });
+  });
+  /* One reload when a new build takes over, so an update never needs the app
+     to be force-quit. The guard stops the reload loop that otherwise happens
+     when the worker claims a page that is already current. */
+  var reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(reloaded) return; reloaded = true; location.reload();
+  });
+})();
+</script>
 </body>
 </html>

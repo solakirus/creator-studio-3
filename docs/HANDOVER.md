@@ -515,3 +515,54 @@ dropped on. It also checks a quick tap still opens the task, and that
 drag on touch needs `touch-action: none` and its own panning. `.tlitem`,
 `.wbeat` and the clip rows still say `pan-y` and will have the same problem if
 a drag is ever added to them.
+
+## On the iPad, as an installed web app (2026-10-15)
+
+No Apple Developer account, no Mac, no $99. Safari's **Add to Home Screen**
+gives a fullscreen app with its own icon, its own database and offline use.
+The app already ran without Capacitor — every plugin call is guarded, and the
+browser tests have always loaded it with no Capacitor present — so this was
+packaging, not a rewrite.
+
+**Served from GitHub Pages**, by `.github/workflows/pages.yml`: it stages
+`app/` minus the tests, stamps the service worker, runs `scripts/check-site.js`
+and publishes. Only `app/` reaches the web; `android/`, `electron/` and `docs/`
+stay in the repo, and the check fails the deploy if any of them appear.
+
+**It must be Add to Home Screen, not a bookmark.** Safari clears an ordinary
+site's storage after 7 unused days; installed web apps are exempt. A bookmark
+would quietly lose the database in a week.
+
+**The service worker** (`app/sw.js`, stamped by `scripts/build-sw.js`):
+
+- the precache list is read off disk at build time, never kept by hand — a
+  hand-kept list goes stale the first time a script is added, and it fails
+  *only offline*, which is when it cannot be debugged
+- `BUILD` is a content hash, so rebuilding unchanged files keeps the cache,
+  and any real change makes a new one; every older cache is deleted on activate
+- the page is network-first, assets cache-first — so a deploy is picked up as
+  soon as there is signal, rather than the device being stranded on an old build
+- it is **not** registered inside the APK or Electron, where the files already
+  come off disk
+- IndexedDB is untouched by any of it; a worker update never clears data
+
+**iOS specifics added:** `-webkit-touch-callout:none` on the gestures that use
+a long press (the week board's cards, the ink canvas) — `user-select` alone
+does not stop Safari raising the copy/share callout; `overscroll-behavior:
+contain` so scrollers do not rubber-band, which in a home-screen app reads as
+the page coming loose; and `-webkit-text-size-adjust:100%` so landscape does
+not resize text and reflow the planner's fixed sheet.
+
+**The Apple Pencil already works** — `paper.js` reads `e.pressure` for
+`pointerType === 'pen'`, ignores touches once a pen has been seen (palm
+rejection, unless "Finger writes" is on), and flips `touch-action` on the
+canvas so a finger scrolls but the pen draws. Not changed; worth knowing it was
+written for this. `getCoalescedEvents()` is not used and would make fast
+strokes smoother if it ever matters.
+
+**Tests:** `node app/tests/browser/pwa.browser.js _site` serves the staged site
+from `/creator-studio-3/` — a subpath, because that is how a project site is
+served and a single rooted `/` path would pass locally and break there — then
+installs it, writes a task, reloads, pulls the network, and checks the app
+still opens with the task intact and **zero** requests reaching the server.
+`npm run site` does the stamp-and-check locally.

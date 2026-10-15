@@ -13,7 +13,8 @@
     "android:setup": "node scripts/android-setup.js",
     "android:sync": "node scripts/copy-web.js && npx cap sync android && node scripts/android-setup.js --patch-only",
     "android:open": "npx cap open android",
-    "test": "node scripts/run-tests.js"
+    "test": "node scripts/run-tests.js",
+    "site": "node scripts/build-sw.js app && node scripts/check-site.js app"
   },
   "build": {
     "appId": "com.solakirus.creatorstudio3",

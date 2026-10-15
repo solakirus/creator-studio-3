@@ -3975,3 +3975,19 @@ select.unit option{background:var(--surface-2);color:var(--cream)}
 .ci-card .ci-hook{color:var(--orange-hi)}
 .ci-card .ci-why{color:var(--muted);font-size:13px}
 .ci-acts{display:flex;gap:8px;margin-top:8px}
+
+/* ---------- installed on iOS ----------
+   Safari's long-press raises the copy/share callout and starts a selection,
+   which lands on exactly the gestures this app uses: the week board's
+   long-press to lift a card, and the ink canvas. user-select alone does not
+   suppress the callout on iOS, so it is named here too. */
+.wk-card,.pp-ink,.pp-page,.tab,.chip,.iconbtn,.pp-b{-webkit-touch-callout:none}
+
+/* No rubber-band past the ends of a scroller. On the week board and the paper
+   stage that bounce reads as the page coming loose, and in a home-screen app
+   there is no address bar to anchor it. */
+.wk-cols,.pp-wrap,.view{overscroll-behavior:contain}
+
+/* Safari sizes text up in landscape unless told not to; the planner's pages
+   are drawn to a fixed sheet and must not reflow. */
+html{-webkit-text-size-adjust:100%}
