@@ -21,7 +21,8 @@ head('full view');
 t('there is a button for it', /data-pa="full"/.test(paper));
 t('it shows a close affordance when open', /✕ Close/.test(paper));
 t('it is a class, not the Fullscreen API', /pp-full/.test(css) && !/requestFullscreen/.test(paper));
-t('the toolbar stays reachable', /\.pp-host\.pp-full \.pp-bar\{position:sticky/.test(css));
+t('the toolbar stays reachable', /\.pp-host\.pp-full \.pp-bar\{position:fixed/.test(css),
+  'it floats over the page now rather than sitting above it');
 
 head('turning the pages');
 t('an edge strip either side', /pp-turn prev/.test(paper) && /pp-turn next/.test(paper));
@@ -78,6 +79,28 @@ const journal = eval('(' + m[1] + ')');
   t('existing writing is kept', /Wrote this by hand earlier\./.test(db['2026-10-15'].text));
   t('the mood survives', db['2026-10-15'].mood === 'good');
 
-  console.log(`\n${fail ? 'FAILED' : 'full view turns pages, and the journal takes the reflections'}  (${pass} ok, ${fail} failed)\n`);
+  head('full view is the whole window, and the menus float over it');
+t('it moves to <body> to get there', /document\.body\.appendChild\(host\)/.test(paper),
+  'position:fixed cannot escape an ancestor containing block');
+t('and goes back where it came from', /homeParent\.insertBefore\(host, homeNext\)/.test(paper));
+t('leaving with the screen if that screen closed', /homeParent\.isConnected/.test(paper));
+t('checked after the slide-out, not during', /320\)/.test(paper), 'pop() removes the screen 280ms later');
+t('the toolbar floats at the bottom', /\.pp-host\.pp-full \.pp-bar\{position:fixed/.test(css));
+t('the blur is on a pseudo-element', /\.pp-host\.pp-full \.pp-bar::before\{[^}]*backdrop-filter/.test(css),
+  'a backdrop-filter parent becomes the containing block for fixed children');
+t('and not on the bar itself', /\.pp-host\.pp-full \.pp-bar\{[^}]*background:none;border:0/.test(css));
+t('navigation pins to the top left', /\.pp-bar > \.pp-grp:nth-child\(1\)\{top:/.test(css));
+t('and the fit leaves room for the floating bar', /st\.full \? 104 : 16/.test(paper));
+
+head('the palm');
+t('a pen takes the pointer from whatever had it', /dropPalm\(side\)/.test(paper));
+t('releasing the capture the palm took', /releasePointerCapture\(pid\)/.test(paper));
+t('a touch stroke is kept so it can be retracted', /lastTouch = e\.pointerType === 'touch'/.test(paper));
+t('but only for half a second', /lastTouch\.at > 500/.test(paper));
+t('being a pen user is remembered between launches', /if\(meta\.prefs\.penSeen\) penSeen = true/.test(paper));
+t('and saved', /fit: st\.fit, penSeen/.test(paper));
+t('a broad contact is a palm before any pen is seen', /isBroad/.test(paper));
+
+console.log(`\n${fail ? 'FAILED' : 'full view turns pages, and the journal takes the reflections'}  (${pass} ok, ${fail} failed)\n`);
   process.exit(fail ? 1 : 0);
 })();

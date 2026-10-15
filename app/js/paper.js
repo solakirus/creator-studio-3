@@ -62,7 +62,10 @@
     try { const m = await Store.get('settings', 'paper-meta'); if(m) meta = { done: m.done || {}, idx: m.idx || {}, ...m }; } catch(e){}
     if(meta.prefs){ Object.assign(st, { colour: meta.prefs.colour || st.colour, size: meta.prefs.size || st.size,
       finger: !!meta.prefs.finger, spread: meta.prefs.spread === undefined ? null : meta.prefs.spread,
-      fit: meta.prefs.fit === 'width' ? 'width' : 'page' }); }
+      fit: meta.prefs.fit === 'width' ? 'width' : 'page' });
+      /* Once you have written with a stylus you are a stylus user next time
+         too. Without this, the first palm of every session got through. */
+      if(meta.prefs.penSeen) penSeen = true; }
   }
   async function loadRec(k){
     if(cache[k]) return cache[k];
@@ -73,7 +76,7 @@
     return (cache[k] = r);
   }
   function saveMeta(){
-    meta.prefs = { colour: st.colour, size: st.size, finger: st.finger, spread: st.spread, fit: st.fit };
+    meta.prefs = { colour: st.colour, size: st.size, finger: st.finger, spread: st.spread, fit: st.fit, penSeen };
     Store.put('settings', meta, 'paper-meta').catch(e => console.error(e));
   }
   /* each page saves a moment after you lift the pen */
@@ -387,6 +390,32 @@
      page you can see — which is not what a paper planner is for. So "Whole
      page" fits both ways and is the default; "Fill width" is the old
      behaviour, kept because it is the better one to write at. */
+  /* ---------------------------------------------------- palm rejection
+
+     Two things make a palm awkward: it lands FIRST, and the only proof it was
+     a palm is the pen turning up a moment later. So the last touch-started
+     stroke is remembered, and a pen landing within half a second retracts it.
+     Half a second is about the gap between the hand settling and the tip
+     touching; much longer and a deliberate finger stroke would start
+     disappearing under the next pen mark. */
+  let lastTouch = null;      /* { side, stroke, at } */
+
+  /* Before any pen has been seen there is nothing to judge by but the contact
+     patch. A fingertip is small; the side of a hand is not. Safari reports
+     these for touch; where it does not, this simply never fires. */
+  const isBroad = e => (e.width && e.width > 38) || (e.height && e.height > 38);
+
+  function dropPalm(side){
+    if(!lastTouch || lastTouch.side !== side) return;
+    if(Date.now() - lastTouch.at > 500){ lastTouch = null; return; }
+    const ink = rec && rec[side];
+    if(ink){
+      const i = ink.strokes.indexOf(lastTouch.stroke);
+      if(i >= 0){ ink.strokes.splice(i, 1); redraw(side); }
+    }
+    lastTouch = null;
+  }
+
   function fit(){
     const stage = host && host.querySelector('.pp-stage'); if(!stage) return;
     const n = host.querySelectorAll('.pp-page').length;
@@ -395,9 +424,11 @@
     if(st.fit === 'width'){
       scale = Math.min(2, byW);
     } else {
-      /* the room left under the toolbar, measured rather than assumed */
+      /* the room left under the toolbar, measured rather than assumed. In full
+         view the toolbar floats over the bottom of the page, so its height is
+         not in the layout and has to be kept clear by hand. */
       const hb = host.getBoundingClientRect(), sb = stage.getBoundingClientRect();
-      const room = hb.bottom - sb.top - 16;
+      const room = hb.bottom - sb.top - (st.full ? 104 : 16);
       scale = room > 120 ? Math.min(byW, room / PH) : byW;
     }
     scale = Math.max(.08, scale);
@@ -482,11 +513,32 @@
 
     cv.addEventListener('pointerdown', e => {
       if(st.tool === 'hand') return;
-      if(e.pointerType === 'pen' && !penSeen){
-        penSeen = true;
-        host.querySelectorAll('.pp-ink').forEach(c => { c.style.touchAction = st.finger ? 'none' : 'pan-x pan-y pinch-zoom'; });
+
+      if(e.pointerType === 'pen'){
+        /* The pen always wins, even if something else got here first. Writing
+           with a stylus means the heel of your hand lands BEFORE the tip, so
+           the palm would otherwise take the pointer and `pid !== null` would
+           then turn the actual pen stroke away — palm draws, pen does not,
+           which is precisely the wrong way round. */
+        dropPalm(side);
+        if(pid !== null){
+          try { cv.releasePointerCapture(pid); } catch(_){}
+          pid = null; cur = null; erasing = false;
+        }
+        if(!penSeen){
+          penSeen = true;
+          saveMeta();                 /* remembered, so the next launch starts knowing */
+          host.querySelectorAll('.pp-ink').forEach(c => {
+            c.style.touchAction = st.finger ? 'none' : 'pan-x pan-y pinch-zoom'; });
+        }
       }
-      if(e.pointerType === 'touch' && penSeen && !st.finger) return;      /* palm or a scrolling finger */
+
+      if(e.pointerType === 'touch' && !st.finger){
+        if(penSeen) return;                       /* a pen user: this is a palm */
+        /* Before any pen has been seen there is nothing to go on but the
+           contact itself. A fingertip is small; the side of a hand is not. */
+        if(isBroad(e)) return;
+      }
       if(pid !== null) return;
       e.preventDefault();
       pid = e.pointerId; try { cv.setPointerCapture(pid); } catch(_){}
@@ -496,6 +548,9 @@
       t0 = Date.now();
       cur = st.tool === 'hl' ? { c: HL, s: 24, h: 1, p: [x, y, 50] } : { c: st.colour, s: SIZES[st.size], p: [x, y, pr(e)] };
       rec[side].strokes.push(cur);
+      /* keep a handle on it: if a pen arrives in the next half second this was
+         a palm, and dropPalm() takes it back out again */
+      lastTouch = e.pointerType === 'touch' ? { side, stroke: cur, at: Date.now() } : null;
       redraw(side);
     });
     cv.addEventListener('pointermove', e => {
@@ -550,9 +605,55 @@
      keyboard. It is a class on the host rather than the Fullscreen API,
      because the pen, the dialogs and the toolbar all have to keep working,
      and a real fullscreen request would put the dialogs behind the page. */
+  let homeParent = null, homeNext = null, watchingExit = false;
+
+  /* Leaving the planner while it is full — the back arrow, a swipe, a deep
+     link — would otherwise leave it sitting in <body> over the whole app with
+     no way back, because the screen that owned it is gone and taking its own
+     container with it does not take this one. */
+  function watchForExit(){
+    if(watchingExit || !global.Screens || !Screens.onChange) return;
+    watchingExit = true;
+    Screens.onChange(() => {
+      if(!st.full || !homeParent) return;
+      /* pop() announces straight away but removes the screen 280ms later, once
+         it has slid out — so checking now would always find it still attached */
+      setTimeout(() => {
+        if(st.full && homeParent && !homeParent.isConnected) setFull(false);
+      }, 320);
+    });
+  }
+
   function setFull(on){
     st.full = !!on;
     if(!host) return;
+
+    /* Full means the whole window, and position:fixed cannot promise that: any
+       ancestor with a transform, a filter or containment becomes the containing
+       block, and "fixed" then means fixed to that. On a laptop the left rail
+       did exactly this, so full view stopped 92px short of the edge. Moving the
+       planner to <body> for the duration is the only version of this that is
+       true on every screen. */
+    if(st.full){
+      if(!homeParent && host.parentNode){
+        homeParent = host.parentNode;
+        homeNext = host.nextSibling;
+        document.body.appendChild(host);
+        watchForExit();
+      }
+    } else if(homeParent){
+      /* Put it back where it came from — unless the screen that owned it has
+         been closed, in which case there is nowhere to go and it should
+         simply leave. */
+      if(homeParent.isConnected){
+        if(homeNext && homeNext.parentNode === homeParent) homeParent.insertBefore(host, homeNext);
+        else homeParent.appendChild(host);
+      } else if(host.parentNode){
+        host.parentNode.removeChild(host);
+      }
+      homeParent = homeNext = null;
+    }
+
     host.classList.toggle('pp-full', st.full);
     if(st.full){
       if(!keyWired){

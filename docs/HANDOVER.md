@@ -621,3 +621,41 @@ pretend. `checks.test.js` guards the invariants.
 **For the other apps:** `backup.js` depends only on `Store`, `Transfer` and the
 Capacitor-shaped `Filesystem`. Any of the other apps gains it by shipping the
 file, calling `Backup.auto()` at boot, and adding the Settings row.
+
+## Paper: the palm, and a real full screen (2026-10-15)
+
+**The palm was winning because it lands first.** Writing with a stylus means
+the heel of the hand touches before the tip does. The old code only ignored
+touches *after* a pen had been seen — and worse, the palm took the pointer,
+so `if(pid !== null) return` then turned the real pen stroke away. Palm drew,
+pen did not. Three changes:
+
+- a pen now takes the pointer from whatever holds it, releasing the palm's
+  capture rather than deferring to it
+- the last touch-started stroke is remembered, and a pen landing within 500ms
+  retracts it — that gap is about hand-settles-then-tip-touches; much longer
+  and deliberate finger strokes would vanish under the next pen mark
+- `penSeen` is saved in `paper-meta.prefs`, so being a stylus user is
+  remembered between launches. Before this the first palm of *every session*
+  got through
+- before any pen has been seen there is nothing to judge by but the contact
+  patch, so a broad one (`e.width`/`e.height` over 38) is treated as a palm
+
+**Full view is now actually full.** It was stopping 92px short on a laptop and
+iPad, because `position:fixed` does not escape an ancestor that is a containing
+block — the left rail was one. The planner is moved to `<body>` while full and
+put back on exit, which is the only version of this that is true on every
+screen. If the owning screen is closed while full, the planner leaves with it;
+that check runs 320ms after the announcement because `pop()` announces
+immediately and removes the screen 280ms later, once it has slid out.
+
+**The toolbar floats** instead of taking the top of the window: pen tools and
+colours in a pill along the bottom, where you are and which page pinned top
+left, out of the way of a right hand on the sheet. `fit()` keeps 104px clear
+for the bar, since a floating element is not in the layout.
+
+One trap worth recording: **the blur sits on `.pp-bar::before`, not on
+`.pp-bar`.** An element with a `backdrop-filter` becomes the containing block
+for its `position:fixed` children, which pinned the navigation groups inside
+the toolbar — they appeared stacked at the bottom of the screen instead of in
+the corner. Same family of bug as the rail.
