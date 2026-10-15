@@ -74,6 +74,13 @@
         await Store.put('journal', entry);
         Data.invalidate && Data.invalidate('journal');
       },
+      /* Straight from the page you are planning to that day in the app, and
+         back out again — the point is to go to and fro while you lay the day
+         out, not to navigate home and dig for it. */
+      openDay: async iso => {
+        const day = await Data.dateToDay(new Date(iso + 'T09:00').getTime());
+        Screens.push('daysheet', { day, onChange: async () => { await load(); Paper.render(); } });
+      },
       ai: (prompt, image, label) => ShotAI.readImage(prompt, image, label),
       toast: m => U.toast(m)
     });

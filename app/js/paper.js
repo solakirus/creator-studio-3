@@ -357,6 +357,13 @@
           <button type="button" class="pp-b pp-txt" data-pa="fit"
             title="Whole page: see all of it at once. Fill width: bigger, better to write at."
             >${st.fit === 'width' ? 'Fill width' : 'Whole page'}</button>
+          <!-- Typing a task beats writing one and hoping it reads: same
+               result, no handwriting step, and it works on the schedule
+               where the boxes are too small to write in comfortably. -->
+          <button type="button" class="pp-b pp-txt" data-pa="newtask"
+            title="Add a task to this day, with a time">+ Task</button>
+          ${H.openDay ? `<button type="button" class="pp-b pp-txt" data-pa="day"
+            title="Open this day in the app, with its tasks and shots">Day view</button>` : ''}
           <button type="button" class="pp-b pp-txt" data-pa="full"
             title="${st.full ? 'Leave full view (Esc)' : 'Full view — just the planner, arrow keys turn the pages'}"
             >${st.full ? '✕ Close' : 'Full view'}</button>
@@ -485,7 +492,24 @@
     for(let i = 0; i < x.p.length; i += 3){ a = Math.min(a, x.p[i]); b = Math.min(b, x.p[i + 1]); c = Math.max(c, x.p[i]); d = Math.max(d, x.p[i + 1]); }
     return { x: a, y: b, w: c - a, h: d - b, cx: (a + c) / 2, cy: (b + d) / 2 }; };
 
-  function pushUndo(side){ undo.push({ k: key, side, s: JSON.stringify(rec[side].strokes) }); if(undo.length > 80) undo.shift(); }
+  /* Undo used to JSON.stringify every stroke on the page at the start of each
+     new one. That is O(everything written so far), on the pen-down, on the main
+     thread — so the more you wrote the more each stroke hitched before it
+     began. On a schedule page it was the difference between writing and
+     fighting.
+
+     Adding a stroke only needs to remember how many there were: undoing it is
+     a truncate. The eraser still takes a full snapshot, because it removes
+     strokes from anywhere in the list and there is nothing cheaper to record —
+     but erasing is one action, not every stroke. */
+  function pushUndo(side){
+    undo.push({ k: key, side, len: rec[side].strokes.length });
+    if(undo.length > 80) undo.shift();
+  }
+  function pushUndoFull(side){
+    undo.push({ k: key, side, s: JSON.stringify(rec[side].strokes) });
+    if(undo.length > 80) undo.shift();
+  }
 
   function underneath(cx, cy){
     const list = document.elementsFromPoint(cx, cy);
@@ -543,8 +567,10 @@
       e.preventDefault();
       pid = e.pointerId; try { cv.setPointerCapture(pid); } catch(_){}
       const [x, y] = at(e);
+      /* the eraser takes strokes out from anywhere, so only a snapshot can put
+         them back; drawing just appends, so a count is enough */
+      if(st.tool === 'eraser'){ pushUndoFull(side); erasing = true; eraseAt(x, y); return; }
       pushUndo(side);
-      if(st.tool === 'eraser'){ erasing = true; eraseAt(x, y); return; }
       t0 = Date.now();
       cur = st.tool === 'hl' ? { c: HL, s: 24, h: 1, p: [x, y, 50] } : { c: st.colour, s: SIZES[st.size], p: [x, y, pr(e)] };
       rec[side].strokes.push(cur);
@@ -706,6 +732,13 @@
     /* only the drawn size changes, so re-fit rather than redraw the page */
     if(a === 'fit'){ st.fit = st.fit === 'width' ? 'page' : 'width'; saveMeta(); return render(); }
     if(a === 'full') return setFull(!st.full);
+    if(a === 'newtask') return newTaskDialog();
+    if(a === 'day'){
+      /* the day the page is showing, not today — you plan Thursday on
+         Wednesday evening and want Thursday */
+      if(H.openDay) H.openDay(defaultDate());
+      return;
+    }
     if(a === 'finger'){ st.finger = !st.finger; saveMeta(); return render(); }
     if(a === 'tool'){ st.tool = el.dataset.t; return render(); }
     if(a === 'colour'){ st.colour = el.dataset.c; if(st.tool !== 'pen') st.tool = 'pen'; saveMeta(); return render(); }
@@ -718,7 +751,10 @@
     const i = undo.map(u => u.k).lastIndexOf(key);
     if(i < 0) return toast('Nothing to undo on this page');
     const u = undo.splice(i, 1)[0];
-    rec[u.side].strokes = JSON.parse(u.s); redraw(u.side); saveRec();
+    /* a marker undoes by truncating; a snapshot by restoring */
+    if(u.s !== undefined) rec[u.side].strokes = JSON.parse(u.s);
+    else rec[u.side].strokes.length = Math.min(rec[u.side].strokes.length, u.len);
+    redraw(u.side); saveRec();
   }
 
   /* ---------------------------------------------------------- reading handwriting */
@@ -844,6 +880,56 @@ one entry per handwritten item, like [{"day":12,"title":"Mike's birthday"}]`
         toast(`Added ${out.length} ${out.length === 1 ? 'task' : 'tasks'}`);
         render();
       };
+    });
+  }
+
+  /* Add a task by typing it. The handwriting route still exists, but it needs
+     a reading step that can be wrong, and the hour boxes on the schedule are
+     too small to write in comfortably anyway. This is the same destination by
+     a road that cannot misread you. */
+  function newTaskDialog(){
+    const date = defaultDate();
+    const mine = (H.tasks ? H.tasks(date, date) : []).slice()
+      .sort((a, b) => String(a.at || '~').localeCompare(String(b.at || '~')));
+    const pretty = iso => { const d = dOf(iso);
+      return d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }); };
+
+    dialog(`<h2>Add a task</h2>
+      <p class="pp-dnote">On ${esc(pretty(date))}. Leave the time empty and it
+        simply belongs to the day.</p>
+      <input class="pp-in" id="nt-title" placeholder="What needs doing" autocomplete="off">
+      <div class="pp-row2" style="display:flex;gap:10px;margin-top:10px">
+        <label style="flex:1">
+          <span class="pp-dnote" style="display:block;margin:0 0 4px">Time</span>
+          <input class="pp-in" id="nt-at" type="time" step="300">
+        </label>
+        <label style="width:108px">
+          <span class="pp-dnote" style="display:block;margin:0 0 4px">Minutes</span>
+          <input class="pp-in" id="nt-mins" type="number" min="0" step="15" placeholder="60">
+        </label>
+      </div>
+      ${mine.length ? `<p class="pp-dnote" style="margin-top:12px">Already on this day:
+        ${mine.slice(0, 8).map(t => esc((t.at ? t.at + ' ' : '') + t.title)).join(' · ')}${
+          mine.length > 8 ? ' …' : ''}</p>` : ''}
+      <div class="pp-acts">
+        <span class="pp-grow"></span>
+        <button type="button" class="pp-btn" data-x>Cancel</button>
+        <button type="button" class="pp-btn pri" data-ok>Add it</button>
+      </div>`, d => {
+      const title = d.querySelector('#nt-title');
+      setTimeout(() => title && title.focus(), 50);
+      const add = async () => {
+        const v = (title.value || '').trim();
+        if(!v){ title.focus(); return; }
+        const at = (d.querySelector('#nt-at').value || '').trim();
+        const mins = +(d.querySelector('#nt-mins').value || 0) || (at ? 60 : 0);
+        d.close();
+        await H.addTasks([{ title: v, date, at: at || '', mins }]);
+        toast(at ? `Added at ${at}` : 'Added to the day');
+      };
+      d.querySelector('[data-x]').onclick = () => d.close();
+      d.querySelector('[data-ok]').onclick = add;
+      title.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); add(); } });
     });
   }
 

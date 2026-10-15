@@ -51,7 +51,10 @@ global.Store = {
   put: async (s, v) => { db[v.id] = v; }
 };
 global.Data = { invalidate(){} };
-const m = scr.match(/journal: (async \(date, heading, text\) => \{[\s\S]*?\n      \}),\n      ai:/);
+/* Terminate on the next key at the same indent, whatever it is called — the
+   first version of this matched up to "ai:" and broke the moment another hook
+   was added between them. A test should not care what sits next to it. */
+const m = scr.match(/journal: (async \(date, heading, text\) => \{[\s\S]*?\n      \}),\n(?:\s*\/\*[\s\S]*?\*\/\s*\n)?\s*\w+:/);
 const journal = eval('(' + m[1] + ')');
 
 (async () => {

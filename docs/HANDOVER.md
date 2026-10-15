@@ -678,3 +678,41 @@ would fail with "not a git repository" or a push to nowhere.
 
 It also refuses to force past a rejected push. A non-fast-forward means GitHub
 has something the laptop does not, and forcing is how that gets destroyed.
+
+## Paper: why writing stuck, and typing a task instead (2026-10-15)
+
+**The stick was undo.** `pushUndo` ran `JSON.stringify` over every stroke on
+the page at the *start* of each new one — O(everything written so far), on the
+main thread, on pen-down. The more you had written the longer each stroke
+hitched before it began, which is why the schedule box felt worst: it is the
+zone that fills up.
+
+Adding a stroke only appends, so undoing it is a truncate: the marker is now
+`{k, side, len}` and undo does `strokes.length = min(length, len)`. The `min`
+matters — a stale marker must never be able to grow the array back. The eraser
+still takes a full snapshot (`pushUndoFull`), because it removes strokes from
+anywhere and there is nothing cheaper to record, but that is one action rather
+than every stroke.
+
+**Typing a task, instead of writing one and hoping.** `+ Task` in the toolbar
+opens a title, a time and a duration, defaults to the date the page is showing
+(not today — you plan Thursday on Wednesday evening), and lists what is already
+on that day so the gaps are visible. It goes through the same `H.addTasks` the
+handwriting route uses, so a typed task lands exactly like a read one: printed
+in the to-do zone with a tick box, and as a block on the schedule. That tick
+box *is* the "did this become a task" indicator — ink has none.
+
+The handwriting route is untouched and still there. This is the same
+destination by a road that cannot misread you, and it works on the hour boxes,
+which are too small to write in comfortably whatever the recognition does.
+
+**Day view** sits beside it and opens that date's day sheet through a new
+`H.openDay` hook — a hook rather than a direct `Screens.push`, because
+`paper.js` is shared with the laptop Planner and must not know about this app's
+screens. Back returns to the page, still drawn.
+
+**A note on the tests:** `paper-full.test.js` pulled the journal writer out of
+`paper-screen.js` with a regex that terminated on `ai:`. Adding `openDay:`
+between them broke it. It now terminates on the next key at that indent,
+whatever it is called — a test should not care what sits next to the thing it
+is testing.
