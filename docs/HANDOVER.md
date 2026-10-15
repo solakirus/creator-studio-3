@@ -659,3 +659,22 @@ One trap worth recording: **the blur sits on `.pp-bar::before`, not on
 for its `position:fixed` children, which pinned the navigation groups inside
 the toolbar — they appeared stacked at the bottom of the screen instead of in
 the corner. Same family of bug as the rail.
+
+## Publishing an update (2026-10-15)
+
+Two speeds:
+
+- **`update.bat`** — commits everything and pushes. Seconds. This is the one
+  for a web-only change: GitHub rebuilds the Pages site and the iPad picks it
+  up next time it has signal.
+- **`build.bat`** — builds the Windows app and the Android APK, then offers to
+  commit and push at the end. Minutes. Use it when the phone or laptop needs
+  the change too.
+
+`update.bat` **re-adds the git remote if it has gone missing**, which it does
+every time a zip is extracted over the folder — the zip carries its own `.git`
+and takes `origin` with it. Without that the first command of every update
+would fail with "not a git repository" or a push to nowhere.
+
+It also refuses to force past a rejected push. A non-fast-forward means GitHub
+has something the laptop does not, and forcing is how that gets destroyed.
