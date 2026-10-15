@@ -481,3 +481,37 @@ yet the button says so rather than opening an empty stage.
 canvas: two days, opens one, and checks that row ends up centred on the stage
 and that the episode is unchanged by looking at it. Run `bash build-preview.sh`
 in `app/` first — the browser tests load the single-file preview.
+
+## Dragging a card on the week board (2026-10-15)
+
+On the phone a card could not be dragged — it only ever opened. The cause was
+one CSS declaration:
+
+```css
+.wk-card{ … touch-action: pan-x pan-y }
+```
+
+That tells the browser the touch belongs to scrolling, so it claims the gesture
+as soon as the finger moves and fires `pointercancel`. The 280ms long-press
+never got the chance to lift the card. The mouse path worked, which is why it
+looked fine on the laptop.
+
+Cards are now `touch-action: none`, so every gesture that starts on one reaches
+the handler. The cost is that scrolling from a card is the board's job, and
+`week-board.js` does it: until the hold turns the gesture into a drag, a finger
+pans `.wk-cols` horizontally or the page vertically by hand, whichever axis it
+moved furthest on. The slop also went from 6px to 10px — a resting finger
+wanders a few pixels, and at 6 the hold was being cancelled before it could
+fire. A gesture that panned sets `noClick`, so scrolling the board no longer
+opens whatever task the finger started on.
+
+**Test:** `xvfb-run node app/tests/browser/weekdrag.browser.js` — a real touch
+pointer through CDP: press, hold past 280ms, drag to the edge until the board
+scrolls the next day in, drop, and check the task moved to the day it was
+dropped on. It also checks a quick tap still opens the task, and that
+`touch-action` is `none`.
+
+**Worth knowing for the other boards:** any element that wants a long-press
+drag on touch needs `touch-action: none` and its own panning. `.tlitem`,
+`.wbeat` and the clip rows still say `pan-y` and will have the same problem if
+a drag is ever added to them.

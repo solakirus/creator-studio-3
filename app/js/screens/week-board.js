@@ -82,7 +82,7 @@
     }
 
     /* ---------------------------------------------------------- drag to move */
-    let drag = null;
+    let drag = null, noClick = false;
     const colAt = (x, y) => {
       const hit = document.elementFromPoint(x, y);
       return hit && hit.closest ? hit.closest('.wk-col') : null;
@@ -113,6 +113,9 @@
       const d = drag; drag = null;
       if(!d) return;
       clearTimeout(d.hold);
+      /* a finger that panned is not a tap — without this, scrolling the board
+         opened whatever task the finger happened to start on */
+      if(d.pan){ noClick = true; setTimeout(() => { noClick = false; }, 0); return; }
       if(!d.ghost) return;
       d.ghost.remove();
       d.card.classList.remove('wk-lifted');
@@ -132,20 +135,43 @@
       o.onChange && o.onChange();
     }
 
+    /* The cards are touch-action:none, so every finger gesture that starts on
+       one arrives here and nothing is cancelled underneath us. The cost is that
+       scrolling from a card is ours to do: until the hold turns the gesture
+       into a drag, a finger pans the columns and the page by hand. */
     el.addEventListener('pointerdown', e => {
       const card = e.target.closest('.wk-card');
       if(!card || e.button > 0) return;
-      /* a mouse drags at once; a finger holds first, so swiping still scrolls */
       const touch = e.pointerType !== 'mouse';
-      drag = { card, sx: e.clientX, sy: e.clientY, ghost: null };
-      if(touch) drag.hold = setTimeout(() => { if(drag && !drag.ghost){ start(card, e); if(navigator.vibrate) navigator.vibrate(12); } }, 280);
+      drag = { card, sx: e.clientX, sy: e.clientY, ghost: null, pan:false,
+               cols: el.querySelector('.wk-cols'),
+               sl: 0, st: 0 };
+      if(drag.cols){ drag.sl = drag.cols.scrollLeft; }
+      drag.st = (document.scrollingElement || document.documentElement).scrollTop;
+      /* a mouse drags at once; a finger holds first, so a swipe still scrolls */
+      if(touch) drag.hold = setTimeout(() => {
+        if(drag && !drag.ghost && !drag.pan){ start(card, e); if(navigator.vibrate) navigator.vibrate(12); }
+      }, 280);
     });
     el.addEventListener('pointermove', e => {
       if(!drag) return;
       if(!drag.ghost){
-        const far = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6;
-        if(far && e.pointerType === 'mouse') start(drag.card, e);
-        else if(far){ clearTimeout(drag.hold); drag = null; }   /* it was a scroll */
+        const ddx = e.clientX - drag.sx, ddy = e.clientY - drag.sy;
+        /* 10px, not 6: a finger resting still wanders a few pixels, and at 6
+           the hold was being cancelled before it could ever fire */
+        const far = Math.hypot(ddx, ddy) > 10;
+        if(!far) return;
+        if(e.pointerType === 'mouse'){ start(drag.card, e); return; }
+        /* a finger that moved before the hold: this is a scroll, so do it */
+        drag.pan = true;
+        clearTimeout(drag.hold);
+        e.preventDefault();
+        if(Math.abs(ddx) > Math.abs(ddy)){
+          if(drag.cols) drag.cols.scrollLeft = drag.sl - ddx;
+        } else {
+          const sc = document.scrollingElement || document.documentElement;
+          sc.scrollTop = drag.st - ddy;
+        }
         return;
       }
       e.preventDefault();
@@ -158,6 +184,7 @@
       const w = e.target.closest('[data-wk]');
       if(w){ week = +w.dataset.wk === 0 ? await Data.currentWeek() : week + (+w.dataset.wk); return render(); }
       const card = e.target.closest('.wk-card');
+      if(card && noClick) return;
       if(card && !card.classList.contains('wk-lifted')){
         const id = card.dataset.task;
         const t = (await Data.tasks()).find(x => String(x.id) === id);
