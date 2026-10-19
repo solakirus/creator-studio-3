@@ -137,7 +137,8 @@
       }
 
       el.innerHTML = Screens.bar({ kicker:'Today', title:'Day sheet',
-        actions:`<button class="btn-sm" data-a="print">Print</button>` }) + `
+        actions:`<button class="btn-sm accent" data-a="add">+ Task</button>
+                 <button class="btn-sm" data-a="print">Print</button>` }) + `
       <div class="view">
         <header class="ds-head">
           <!-- Three lines that each hold one line's worth: the weekday with the
@@ -151,14 +152,23 @@
         </header>
         ${items.length ? body : `<div class="ds-empty">
           <b style="display:block;font-family:var(--display),sans-serif;font-weight:900;font-size:21px;margin:0 0 8px">Nothing on this day</b>
-          <p style="margin:0;font-size:15px;line-height:1.6">Add a task on Today, or schedule a vlog beat onto this date.</p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6">Put the first thing on it, or schedule a vlog beat onto this date.</p>
+          <button class="btn-primary" data-a="add">+ Add a task</button>
         </div>`}
       </div>`;
     }
 
     el.addEventListener('click', e => {
       const a = e.target.closest('[data-a]');
-      if(a && a.dataset.a === 'print') window.print();
+      if(!a) return;
+      if(a.dataset.a === 'print') return window.print();
+      /* This sheet is the day laid out in front of you, which is exactly when
+         you notice what is missing from it. */
+      if(a.dataset.a === 'add')
+        return TaskForm.open({ day, onSaved: async () => {
+          await load(); render();
+          if(params.onChange) params.onChange();
+        } });
     });
 
     await load();

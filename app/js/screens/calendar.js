@@ -146,6 +146,8 @@
             </button>`;
           }).join('')}</div>`).join('')}
         </div>
+        <!-- the grid looked read-only, because it was -->
+        <p class="hintline" style="margin:10px 0 0">Tap any day to see it and add a task to it.</p>
 
         <div class="block" style="margin-top:16px">
           <h4>Unscheduled queue</h4>
@@ -174,14 +176,21 @@
         ${evs.length ? `<p class="caps muted" style="font-size:11.5px;margin:0 0 10px">On this day</p>
           <div class="group compact" style="margin:0 0 18px">
             ${evs.map(c => c.kind === 'task'
-              ? `<div class="row" style="cursor:default">
+              /* a task here used to be a dead row — the one place you were
+                 already looking at the thing you wanted to change */
+              ? `<button class="row" data-task="${c.id}">
                   <span class="timechip${c.timed ? '' : ' none'}">${c.timed ? fmtTime(c.when) : '—'}</span>
-                  <span class="lbl">${c.title}<small>Task · day ${c.day}</small></span></div>`
+                  <span class="lbl">${c.title}<small>Task · day ${c.day}</small></span>
+                  ${ICON.chevR}</button>`
               : `<button class="row" data-clip="${c.id}">
                   <span class="timechip">${fmtTime(c.when)}</span>
                   <span class="lbl">${c.title}<small>${(PLATFORMS[c.plat]||{n:c.plat}).n}</small></span>
                   ${ICON.chevR}</button>`).join('')}
           </div>` : `<p style="margin:0 0 18px;color:var(--muted);font-size:15px">Nothing on this day.</p>`}
+
+        <div class="sheetcta" style="margin:0 0 18px">
+          <button class="btn-primary" data-add style="flex:1">+ Add a task</button>
+        </div>
         ${q.length ? `<p class="caps muted" style="font-size:11.5px;margin:0 0 10px">Place from the queue</p>
           <div class="group compact" style="margin:0">
             ${q.map(c => `<button class="row" data-place="${c.id}">
@@ -193,6 +202,25 @@
       sheetEl => {
         sheetEl.addEventListener('click', async e => {
           if(e.target.closest('[data-cancel]')) return App.closeSheet();
+
+          /* The whole point of planning on a month grid: pick the square, put
+             something in it. The form lands on this date, not on today. */
+          if(e.target.closest('[data-add]')){
+            App.closeSheet();
+            setTimeout(() => TaskForm.open({ date: ts,
+              onSaved: async () => { await load(); render(); } }), 260);
+            return;
+          }
+
+          const tk = e.target.closest('[data-task]');
+          if(tk){
+            const id = tk.dataset.task;
+            App.closeSheet();
+            setTimeout(() => Screens.push('task', { id,
+              onChange: async () => { await load(); render(); } }), 260);
+            return;
+          }
+
           const pl = e.target.closest('[data-place]');
           if(pl){
             const c = clips.find(x => x.id === pl.dataset.place);

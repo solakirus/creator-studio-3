@@ -1,6 +1,7 @@
 node_modules/
 www/
 dist/
+_site/
 backups/
 creator-studio-preview.html
 android/.gradle/

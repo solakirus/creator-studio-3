@@ -56,7 +56,12 @@
           ${days.map(day => {
             const list = on(day.n);
             return `<section class="wk-col${day.n === today ? ' today' : ''}" data-day="${day.n}">
-              <header><b>${DOW[day.d.getDay()]}</b><span>${day.d.getDate()}</span><small>Day ${day.n}</small></header>
+              <header><b>${DOW[day.d.getDay()]}</b><span>${day.d.getDate()}</span><small>Day ${day.n}</small>
+                <!-- the board could move a task to a day and never put one
+                     there; this is the missing half -->
+                <button type="button" class="wk-add" data-add="${day.n}"
+                  aria-label="Add a task to ${DOW[day.d.getDay()]} the ${day.d.getDate()}">+</button>
+              </header>
               <div class="wk-list">
                 ${list.map(t => {
                   const k = KIND[t.kind];
@@ -74,7 +79,8 @@
             </section>`;
           }).join('')}
         </div>
-        <p class="hintline wk-hint">Drag a card to another day to move it. Tap it to open.</p>
+        <p class="hintline wk-hint">Tap <b>+</b> on a day to add a task to it.
+          Drag a card to another day to move it; tap it to open.</p>
       </div>`;
 
       const todayCol = el.querySelector('.wk-col.today');
@@ -183,6 +189,13 @@
     el.addEventListener('click', async e => {
       const w = e.target.closest('[data-wk]');
       if(w){ week = +w.dataset.wk === 0 ? await Data.currentWeek() : week + (+w.dataset.wk); return render(); }
+
+      const add = e.target.closest('[data-add]');
+      if(add){
+        return TaskForm.open({ day: +add.dataset.add, onSaved: async () => {
+          o.keepScroll = true; await render(); o.keepScroll = false; } });
+      }
+
       const card = e.target.closest('.wk-card');
       if(card && noClick) return;
       if(card && !card.classList.contains('wk-lifted')){
