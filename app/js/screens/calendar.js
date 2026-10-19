@@ -10,6 +10,9 @@
     linkedin:{ n:'LinkedIn', c:'#3B82F6' }, newsletter:{ n:'Newsletter', c:'#5BBE6A' }
   };
   const colour = p => (PLATFORMS[p] || { c:'#9AA0A6' }).c;
+  /* channel names are the user's own text and go into markup */
+  const esc = s => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const monthKey = (y,m) => `${y}-${pad(m+1)}`;
   const sameDay = (ts, d) => { const x = new Date(ts);
     return x.getFullYear()===d.getFullYear() && x.getMonth()===d.getMonth() && x.getDate()===d.getDate(); };
@@ -64,6 +67,78 @@
     const scheduled = scheduledClips;
     const queue = () => visible().filter(c => !c.scheduledAt && c.state !== 'posted');
 
+    /* What the one row says, so the state is readable without opening it.
+       "All channels" is the resting state and the thing you want most of the
+       time, so it reads as a statement rather than as a prompt. */
+    function filterLabel(){
+      if(!filters.size) return 'All channels';
+      if(filters.size === 1){
+        const only = [...filters][0];
+        return only === '' ? 'No channel only' : only;
+      }
+      /* deliberately NOT special-cased when every channel is ticked: any
+         filter at all hides tasks, so that is not the same view as "All" */
+      return `${filters.size} channels`;
+    }
+
+    /* The chip list became a sheet. Same toggles, same behaviour, but off the
+       screen until asked for — and with a way back to the whole month at the
+       top, which the chips never had. */
+    function openChannels(){
+      const dot = c => `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;
+        flex:0 0 9px;background:${c}"></span>`;
+      const rows = CHANS.map(c => `
+        <button class="row" data-ch="${esc(c.n)}" aria-pressed="${filters.has(c.n)}">
+          ${dot(c.c)}<span class="lbl">${esc(c.n)}</span>
+          <span class="cf-tick">${filters.has(c.n) ? '✓' : ''}</span>
+        </button>`).join('');
+      const noneRow = clips.some(c => !c.channel) ? `
+        <button class="row" data-ch="" aria-pressed="${filters.has('')}">
+          ${dot('#4A443B')}<span class="lbl">No channel</span>
+          <span class="cf-tick">${filters.has('') ? '✓' : ''}</span>
+        </button>` : '';
+
+      App.sheet(`
+        <h2>Filter by channel</h2>
+        <p style="margin:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.55">
+          Pick one or more to see only their clips. With a filter on, tasks are
+          hidden — the month is showing you the channel, not your day.</p>
+        <div class="group compact" style="margin:0 0 14px">
+          <button class="row" data-ch="__all" aria-pressed="${!filters.size}">
+            <span class="lbl">All channels<small>Everything, plus your tasks</small></span>
+            <span class="cf-tick">${!filters.size ? '✓' : ''}</span>
+          </button>
+        </div>
+        <div class="group compact" style="margin:0">${rows}${noneRow}</div>
+        <div class="sheetcta"><button class="btn-primary" data-cancel style="flex:1">Done</button></div>`,
+      sheetEl => {
+        /* Repaint the ticks in place. Calling App.sheet again would build a
+           fresh node and slide the whole sheet up from the bottom on every
+           tick, which looks broken when all that changed is one checkmark. */
+        const sync = () => {
+          sheetEl.querySelectorAll('[data-ch]').forEach(r => {
+            const v = r.dataset.ch;
+            const on = v === '__all' ? !filters.size : filters.has(v);
+            r.setAttribute('aria-pressed', String(on));
+            const tick = r.querySelector('.cf-tick');
+            if(tick) tick.textContent = on ? '✓' : '';
+          });
+        };
+        sheetEl.addEventListener('click', e => {
+          if(e.target.closest('[data-cancel]')) return App.closeSheet();
+          const b = e.target.closest('[data-ch]');
+          if(!b) return;
+          const v = b.dataset.ch;
+          if(v === '__all') filters.clear();
+          else filters.has(v) ? filters.delete(v) : filters.add(v);
+          sync();
+          /* and the grid behind it, so you can see what the filter does before
+             you close the sheet */
+          render();
+        });
+      });
+    }
+
     function weeksIn(){
       const first = new Date(year, month, 1);
       const start = new Date(first);
@@ -106,30 +181,17 @@
           <button data-a="next">→</button>
         </div>
 
-        <p class="caps muted" style="font-size:11.5px;margin:0 0 10px">Filter by channel</p>
-        <div class="chiplist">
-          ${CHANS.map(c =>
-            `<button class="cpill" data-chanf="${(c.n || '').replace(/"/g,'&quot;')}"
-              aria-pressed="${filters.has(c.n)}" style="height:34px;font-size:13.5px">
-              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c.c};margin-right:7px"></span>${c.n}</button>`).join('')}
-          ${clips.some(c => !c.channel)
-            ? `<button class="cpill" data-chanf="" aria-pressed="${filters.has('')}"
-                style="height:34px;font-size:13.5px">
-                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4A443B;margin-right:7px"></span>No channel</button>`
-            : ''}
-        </div>
-
-        <div class="block">
-          <h4 style="margin:0 0 10px">${label}</h4>
-          ${theme && theme.theme
-            ? `<p style="margin:0 0 6px;font-size:16px"><b>${theme.theme}</b></p>
-               ${theme.goal ? `<p style="margin:0;color:var(--muted);font-size:14.5px">Goal: ${theme.goal}</p>` : ''}`
-            : `<p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">
-                 No theme on this month yet. The theme is what the month is about; the goal is the concrete
-                 thing each week is a step toward.</p>`}
-          <div class="metaline" style="margin:14px 0 0">
-            <button class="btn-sm" data-a="theme">${theme && theme.theme ? 'Edit theme' : 'Set a theme'}</button>
-          </div>
+        <!-- One row, not nine pills and a heading. Filtering a month by channel
+             is something you do occasionally; looking at the month is what you
+             came for, and the chip list was pushing the grid off the screen. -->
+        <div class="calfilter">
+          <button class="cf-pick" data-a="chans">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            <span>${filterLabel()}</span>
+            ${ICON.chevR}
+          </button>
+          ${filters.size ? `<button class="btn-sm" data-a="allchans">Clear</button>` : ''}
         </div>
 
         <div class="calgrid">
@@ -149,6 +211,22 @@
         <!-- the grid looked read-only, because it was -->
         <p class="hintline" style="margin:10px 0 0">Tap any day to see it and add a task to it.</p>
 
+        <!-- The theme sat above the grid and pushed it down too. It is the
+             month's framing, which you set once and read occasionally; the grid
+             is the thing you open this screen to look at. -->
+        <div class="block" style="margin-top:16px">
+          <h4 style="margin:0 0 10px">${label}</h4>
+          ${theme && theme.theme
+            ? `<p style="margin:0 0 6px;font-size:16px"><b>${theme.theme}</b></p>
+               ${theme.goal ? `<p style="margin:0;color:var(--muted);font-size:14.5px">Goal: ${theme.goal}</p>` : ''}`
+            : `<p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">
+                 No theme on this month yet. The theme is what the month is about; the goal is the concrete
+                 thing each week is a step toward.</p>`}
+          <div class="metaline" style="margin:14px 0 0">
+            <button class="btn-sm" data-a="theme">${theme && theme.theme ? 'Edit theme' : 'Set a theme'}</button>
+          </div>
+        </div>
+
         <div class="block" style="margin-top:16px">
           <h4>Unscheduled queue</h4>
           ${q.length ? `
@@ -163,7 +241,7 @@
                Queue is empty. Anything in Clips without a date lands here, ready to place.</p>`}
         </div>
 
-        <p class="note">${scheduled().length} clips scheduled · ${q.length} waiting${filters.size ? ' · tasks hidden while filtering by platform' : ''}.</p>
+        <p class="note">${scheduled().length} clips scheduled · ${q.length} waiting${filters.size ? ' · your tasks are hidden while a channel filter is on' : ''}.</p>
       </div>`;
     }
 
@@ -389,12 +467,10 @@
         if(a.dataset.a === 'theme') return openTheme();
         if(a.dataset.a === 'plan')  return autoSchedule();
         if(a.dataset.a === 'auto')  return autoSchedule();
-      }
-      const p = e.target.closest('[data-chanf]');
-      if(p){
-        const k = p.dataset.chanf;
-        filters.has(k) ? filters.delete(k) : filters.add(k);
-        return render();
+        if(a.dataset.a === 'chans') return openChannels();
+        /* back to the whole month in one tap, which the chip list never had —
+           you had to remember which ones you had turned on */
+        if(a.dataset.a === 'allchans'){ filters.clear(); return render(); }
       }
       const qc = e.target.closest('[data-q]');
       if(qc){ placing = placing === qc.dataset.q ? null : qc.dataset.q; return render(); }

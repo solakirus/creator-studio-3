@@ -1592,6 +1592,21 @@ button.hrow{width:100%;background:none;border:0;text-align:left;cursor:pointer;
 /* ============================================================
    Month calendar
    ============================================================ */
+/* The channel filter, as one row instead of a wrapped list of nine pills. It
+   states where it stands ("All channels") rather than asking a question, so the
+   resting state reads as information and not as a control you have to service. */
+.calfilter{display:flex;gap:8px;align-items:center;margin:0 0 14px}
+.cf-pick{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;
+  height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface-1);color:var(--cream);font-size:14.5px;font-weight:600;
+  cursor:pointer;text-align:left}
+.cf-pick:hover{border-color:var(--orange)}
+.cf-pick > svg{flex:0 0 18px;width:18px;height:18px;color:var(--muted)}
+.cf-pick > span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-pick > svg:last-child{flex:0 0 16px;width:16px;height:16px;color:var(--dim)}
+/* the checkmark column in the picker sheet */
+.cf-tick{flex:0 0 20px;text-align:right;color:var(--orange);font-weight:700;font-size:15px}
+
 .calgrid{border:1px solid #2B2822;border-radius:var(--r);overflow:hidden;background:var(--surface-2)}
 /* minmax(0,1fr), not 1fr: a grid column's automatic minimum is its content's
    min-content width, and a nowrap event title has no wrap point — so one long
