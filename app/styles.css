@@ -1517,8 +1517,13 @@ button.hrow{width:100%;background:none;border:0;text-align:left;cursor:pointer;
 .swipecard{background:var(--surface-2);border:1px solid #2B2822;border-radius:var(--r);overflow:hidden;
   cursor:pointer;text-align:left;color:var(--cream);padding:0;box-shadow:0 var(--offset) 0 var(--shadow);
   display:flex;flex-direction:column}
-.swipecard .thumb{position:relative;display:block;aspect-ratio:4/5;background-size:cover;background-position:center;
+/* Sized by padding, not aspect-ratio: Safari on the iPad (17.0) left this box
+   0px tall inside the card's column flexbox, so only the titles showed.
+   A ::before 125% of the width tall is a 4:5 box in every browser there is;
+   flex:none stops the card squeezing it. */
+.swipecard .thumb{position:relative;display:block;flex:none;background-size:cover;background-position:center;
   background-color:#221F1A}
+.swipecard .thumb::before{content:"";display:block;padding-top:125%}
 .swipecard .thumb::after{content:"";position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(10,8,6,.15) 40%,rgba(10,8,6,.72) 100%)}
 .swipecard .src{position:absolute;left:8px;top:8px;z-index:2;border-radius:3px;padding:4px 8px;

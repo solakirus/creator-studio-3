@@ -11,7 +11,8 @@
   .swr-card{position:relative;flex:0 0 132px;scroll-snap-align:start}
   .swr-open{display:block;width:100%;padding:0;border:1px solid #2B2822;border-radius:var(--r);
     background:var(--surface-2);color:var(--cream);text-align:left;cursor:pointer;overflow:hidden}
-  .swr-open .thumb{position:relative;display:block;aspect-ratio:4/5;background-size:cover;
+  .swr-open .thumb::before{content:"";display:block;padding-top:125%}   /* 4:5 without aspect-ratio — see .swipecard .thumb in styles.css */
+  .swr-open .thumb{position:relative;display:block;background-size:cover;
     background-position:center;background-color:#221F1A;overflow:hidden}
   .swr-open .src{position:absolute;left:6px;top:6px;z-index:2;font-size:10.5px;font-weight:800;
     letter-spacing:.08em;padding:3px 6px;border-radius:3px;background:rgba(10,8,6,.75)}
