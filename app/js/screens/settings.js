@@ -28,6 +28,7 @@
     lines:'M3 6h18M3 12h18M3 18h18',
     down:'M12 3v12M8 11l4 4 4-4M4 20h16',
     up:'M12 16V4M8 8l4-4 4 4M4 20h16',
+    sync:'M20 11a8 8 0 0 0-14.6-4.5M4 3.5v4h4M4 13a8 8 0 0 0 14.6 4.5M20 20.5v-4h-4',
     trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13'
   };
 
@@ -120,6 +121,9 @@
 
       ${sec('Data')}
       <div class="group">
+        <button class="row" data-go="sync"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${D.sync}"/></svg>
+          <span class="lbl">Sync with your server<small id="syLine">checking…</small></span>
+          <i class="bkdot" id="syDot"></i>${chev}</button>
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
         ${row(D.down,'Restore from backup','A Creator Studio JSON file','data-go="restore"')}
         ${row(D.down,'Open a plan pack','From the laptop Planner or the Reference Library — safe to open twice','data-go="planpack"')}
@@ -182,6 +186,18 @@
       t.setAttribute('aria-checked', String(await Notify.isEnabled()));
       if(!Notify.available() && note)
         note.textContent = 'Only available in the installed app, not the browser';
+    })();
+
+    /* the sync line: same idea as the backup one below */
+    (async () => {
+      const line = el.querySelector('#syLine'), dot = el.querySelector('#syDot');
+      if(!line || !window.Sync) return;
+      try {
+        const s = await Sync.status();
+        const tone = !s.connected ? '' : s.paused ? 'warn' : s.error ? 'bad' : s.at ? 'good' : 'warn';
+        if(dot) dot.className = 'bkdot ' + tone;
+        line.textContent = syncLine(s);
+      } catch(e){ line.textContent = 'Could not check'; }
     })();
 
     /* the backup line, in plain words and a colour you can read at a glance */
@@ -266,6 +282,7 @@
       if(go.dataset.go === 'restore')   return openRestore();
       if(go.dataset.go === 'planpack')  return openPlanPack();
       if(go.dataset.go === 'ai')        return ShotAI.openSettings();
+      if(go.dataset.go === 'sync')      return openSync(() => mount(el));
       if(go.dataset.go === 'autobackup') return openAutoBackup(() => mount(el));
       if(go.dataset.go === 'backup')    return doBackup();
       if(go.dataset.go === 'csvout')    return doSheets();
@@ -293,6 +310,138 @@
      Deliberately plain about what it can and cannot do on this device. A
      backup people half-trust is worse than none, because they stop making the
      other kind. */
+  /* ---------- sync ----------
+     One sheet for both states. Not connected: an address, a token, Connect —
+     and if both this device and the server already hold data, a plain choice
+     of which wins, because guessing that wrong is the one way sync loses work.
+     Connected: when it last ran, what is waiting, Sync now, pause, disconnect. */
+  const agoText = t => {
+    if(!t) return 'never';
+    const s = Math.round((Date.now() - t) / 1000);
+    if(s < 60) return 'just now';
+    if(s < 3600) return Math.round(s / 60) + ' min ago';
+    if(s < 86400) return Math.round(s / 3600) + ' h ago';
+    return new Date(t).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  };
+  function syncLine(s){
+    if(!s.connected) return 'Off — keep phone, laptop and iPad in step through nastime';
+    if(s.paused) return 'Paused on this device';
+    const wait = s.pending ? ` · ${s.pending} change${s.pending === 1 ? '' : 's'} waiting` : '';
+    if(s.error) return s.error + wait;
+    return 'Synced ' + agoText(s.at) + wait;
+  }
+
+  async function openSync(after){
+    const esc = t => String(t == null ? '' : t)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const s = await Sync.status();
+    const p = 'margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.55';
+
+    if(s.connected){
+      App.sheet(`
+        <h2>Sync</h2>
+        <p style="${p}">This device swaps changes with <b>${esc(s.server)}</b> when it opens,
+          when you come back to it, a few seconds after you change something, and every few
+          minutes. Away from home it keeps working and catches up when it can reach the server.</p>
+        <div class="block" style="margin:0 0 14px">
+          <div class="metaline" style="margin:0">
+            <span class="tg count">Last sync · ${esc(agoText(s.at))}</span>
+            <span class="tg count">${s.pending} waiting to send</span>
+          </div>
+          ${s.error ? `<p class="hintline" style="margin:9px 0 0;color:var(--red)">${esc(s.error)}</p>` : ''}
+        </div>
+        <div class="sheetcta">
+          <button class="btn-primary" data-now>Sync now</button>
+          <button class="btn-ghost" data-pause>${s.paused ? 'Resume sync' : 'Pause on this device'}</button>
+        </div>
+        <button class="btn-ghost" data-off style="width:100%;margin-top:10px;color:var(--red)">Disconnect this device</button>
+        <p class="hintline" style="margin:8px 0 0">Disconnecting keeps everything on this device; it just stops swapping.</p>`,
+      sheetEl => {
+        sheetEl.addEventListener('click', async e => {
+          if(e.target.closest('[data-now]')){
+            const b = e.target.closest('[data-now]');
+            b.disabled = true; b.textContent = 'Syncing…';
+            const r = await Sync.syncNow();
+            App.closeSheet();
+            U.toast(r.ok ? `Synced — ${r.got} in, ${r.sent} out` : (r.error || 'Sync is paused'));
+            after && after(); return;
+          }
+          if(e.target.closest('[data-pause]')){
+            await Sync.setPaused(!s.paused);
+            App.closeSheet(); U.toast(s.paused ? 'Sync resumed' : 'Sync paused'); after && after(); return;
+          }
+          if(e.target.closest('[data-off]')){
+            if(!confirm('Stop syncing this device? Nothing here is deleted.')) return;
+            await Sync.disconnect();
+            App.closeSheet(); U.toast('Disconnected'); after && after();
+          }
+        });
+      });
+      return;
+    }
+
+    const saved = s.server || 'http://192.168.4.23:8787';
+    App.sheet(`
+      <h2>Sync with your server</h2>
+      <p style="${p}">Keeps this device in step with your other ones through Sync Hub on nastime.
+        Everything still works offline; changes swap whenever the server can be reached.</p>
+      <div class="field"><label for="sy-srv">Server address</label>
+        <input id="sy-srv" type="url" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(saved)}"></div>
+      <div class="field"><label for="sy-tok">Sync token</label>
+        <input id="sy-tok" type="password" autocapitalize="off" spellcheck="false" autocomplete="off"
+          placeholder="The SYNC_TOKEN you set in CasaOS"></div>
+      <div id="sy-choice"></div>
+      <p class="hintline" id="sy-msg" style="margin:4px 0 0"></p>
+      <div class="sheetcta"><button class="btn-primary" data-connect>Connect</button></div>`,
+    sheetEl => {
+      const $ = q => sheetEl.querySelector(q);
+      const msg = (t, bad) => { const m = $('#sy-msg'); m.textContent = t; m.style.color = bad ? 'var(--red)' : ''; };
+      const done = r => {
+        App.closeSheet();
+        U.toast(r && r.ok ? `Connected — ${r.got} in, ${r.sent} out` : 'Connected — ' + ((r && r.error) || 'will sync shortly'));
+        after && after();
+      };
+      const run = async (how, btn) => {
+        btn.disabled = true; btn.textContent = how === 'replace' ? 'Fetching…' : 'Sending…';
+        try {
+          if(how === 'replace' && window.Backup){
+            /* the one choice that drops data here, so keep a copy of it first */
+            msg('Backing up this device first…');
+            try { await Backup.run('records', { manual:true }); } catch(e){}
+          }
+          msg('Syncing — the first one can take a minute with pictures…');
+          done(await Sync.connect($('#sy-srv').value, $('#sy-tok').value, how));
+        } catch(e){ btn.disabled = false; btn.textContent = 'Try again'; msg(e.message || String(e), true); }
+      };
+
+      sheetEl.addEventListener('click', async e => {
+        const pick = e.target.closest('[data-how]');
+        if(pick) return run(pick.dataset.how, pick);
+        const c = e.target.closest('[data-connect]');
+        if(!c) return;
+        c.disabled = true; c.textContent = 'Checking…'; msg('');
+        try {
+          const { records } = await Sync.probe($('#sy-srv').value, $('#sy-tok').value);
+          const here = await Sync.localCount();
+          if(!records) return run('upload', c);       /* first device: send it all up */
+          if(!here) return run('replace', c);         /* empty device: take the server's */
+          c.style.display = 'none';
+          $('#sy-choice').innerHTML = `
+            <p style="${p}">The server already has <b>${records}</b> records, and this device has
+              <b>${here}</b>. Which should this device end up with?</p>
+            <button class="btn-primary" data-how="replace" style="width:100%">Use the server's — replace this device</button>
+            <p class="hintline" style="margin:6px 0 12px">Right for a second device. This device's data is backed up first, then swapped for the server's.</p>
+            <button class="btn-ghost" data-how="merge" style="width:100%">Combine both</button>
+            <p class="hintline" style="margin:6px 0 0">Adds what is only here to the server. Where both have the same item, the server's version is kept.</p>`;
+          msg('');
+        } catch(err){
+          c.disabled = false; c.textContent = 'Connect';
+          msg(err.message || String(err), true);
+        }
+      });
+    });
+  }
+
   async function openAutoBackup(after){
     /* settings.js has no module-scope esc(); this sheet puts a URL the user
        typed back into an attribute, so it needs one */

@@ -7,7 +7,7 @@
 
   let tasks = [], urls = {}, focals = {};
   let day = 1, dayDate = Date.now(), derived = [], chips = { clips:0, open:0, streak:0, avatar:null };
-  let filter = 'todo', mode = 'list', adjusting = null, pendingArt = null, nextId = 1;
+  let filter = 'todo', mode = 'list', adjusting = null, pendingArt = null;
   const expanded = new Set();
   let root, drag = null;
 
@@ -771,7 +771,7 @@
         const wid = wsel ? wsel.value : '';
         const routine = wid ? routines.find(x => x.id === wid) : null;
 
-        const task = { id:nextId++, day, title, cad:'One-off', pri:priVal,
+        const task = { id:U.taskId(), day, title, cad:'One-off', pri:priVal,
                        at: $('#f-time').value || null,
                        mins: +$('#f-mins').value || 0,
                        prog: target ? '0 / ' + target : '', subs:steps, view:'todo' };
@@ -816,7 +816,7 @@
       d.setDate(start.getDate() + i);
       if(!days.includes(d.getDay())) continue;
 
-      const copy = { ...first, id: nextId++, day: first.day + i,
+      const copy = { ...first, id: U.taskId(), day: first.day + i,
                      subs: (first.subs || []).map(x => ({ ...x, done:false })) };
       tasks.push(copy);
       await Store.put('tasks', copy);
@@ -1167,7 +1167,6 @@
     try {
       tasks = Object.values(await Store.allMap('tasks'));
     } catch(e){ tasks = []; }
-    nextId = Math.max(0, ...tasks.map(t => t.id)) + 1;
     try { day = await Data.currentDay(); } catch(e){ day = 1; }
     await loadArt();
     await loadDerived();

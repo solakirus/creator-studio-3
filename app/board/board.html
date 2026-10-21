@@ -856,8 +856,11 @@ const DB = {
     if (this.mem) return Promise.resolve([]);
     return new Promise((res, rej) => { const r = this.store('readonly').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
   },
-  put(item) { if (this.mem || !item) return; try { this.store('readwrite').put(item); } catch (e) { console.error(e); } },
-  del(id) { if (this.mem) return; try { this.store('readwrite').delete(id); } catch (e) { console.error(e); } }
+  put(item) { if (this.mem || !item) return; try { this.store('readwrite').put(item); this.synced(item.id); } catch (e) { console.error(e); } },
+  del(id) { if (this.mem) return; try { this.store('readwrite').delete(id); this.synced(id); } catch (e) { console.error(e); } },
+  /* The board writes to the database itself rather than through the app's
+     Store, so it tells the app's sync that this item changed. */
+  synced(id) { try { const P = window.parent !== window ? window.parent : null; if (P && P.Sync && P.Sync.touch) P.Sync.touch('board-items', id); } catch (e) {} }
 };
 const pending = new Map(); let flushT;
 function save(item, now) {

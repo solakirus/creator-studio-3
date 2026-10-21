@@ -668,7 +668,6 @@
                           amount:null, add:[], skip:[], ended:false };
           const plan = Program.diff(shape, all, task.day, { dowOf, key:'series' });
 
-          let nextId = Math.max(0, ...all.map(x => +x.id || 0)) + 1;
           for(const id of plan.remove) await Store.del('tasks', id);
           for(const u of plan.update){
             const x = all.find(y => y.id === u.id);
@@ -677,7 +676,7 @@
             await Store.put('tasks', x);
           }
           for(const c of plan.create){
-            const copy = { ...task, id:nextId++, day:c.day, cad:c.cad, view:'todo',
+            const copy = { ...task, id:U.taskId(), day:c.day, cad:c.cad, view:'todo',
                            subs:(task.subs || []).map(x => ({ ...x, done:false })) };
             await Store.put('tasks', copy);
           }

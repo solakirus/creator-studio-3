@@ -303,11 +303,11 @@
       hint:'day is the program day number; time is 24-hour like 14:30; steps semicolon-separated',
       async run(rows){
         const { values } = await Store.all('tasks');
-        let id = Math.max(0, ...values.map(t => t.id)) + 1, n = 0;
+        let n = 0;
         for(const r of rows){
           if(!r.title) continue;
           await Store.put('tasks', {
-            id: id++, day: Math.max(1, +r.day || 1), title:r.title,
+            id: U.taskId(), day: Math.max(1, +r.day || 1), title:r.title,
             at: r.time || null, cad:r.cadence || 'Daily', pri:(r.priority || 'med').toLowerCase(),
             prog:'', subs: list(r.steps).map(t => ({ t, done:false })), view:'todo'
           });

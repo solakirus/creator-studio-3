@@ -114,7 +114,6 @@
     if(!items.length) return { shoots:0, edits:0, posts:0, clips:0 };
 
     const tasks = await Data.tasks();
-    let id = Math.max(0, ...tasks.map(t => t.id)) + 1;
     let shoots = 0, edits = 0, posts = 0, clips = 0;
 
     /* one shoot task per day, carrying every piece due from it */
@@ -123,7 +122,7 @@
       const names = group.map(s => `${s.channel}${s.of > 1 ? ` #${s.index}` : ''}`);
       const chans = [...new Set(group.map(s => s.channel))];
       await Store.put('tasks', {
-        id: id++, day: dayOf(when),
+        id: U.taskId(), day: dayOf(when),
         title: chans.length === 1
           ? `Shoot · ${chans[0]} · ${group.length} piece${group.length === 1 ? '' : 's'}`
           : `Shoot day · ${group.length} pieces`,
@@ -154,7 +153,7 @@
       clips++;
 
       await Store.put('tasks', {
-        id: id++, day: dayOf(it.editAt),
+        id: U.taskId(), day: dayOf(it.editAt),
         title: `Edit · ${label}`,
         cad:'One-off', pri:'med', at:c.editTime, prog:'', view:'todo',
         kind:'edit', channel:s.channel,
@@ -165,7 +164,7 @@
       edits++;
 
       await Store.put('tasks', {
-        id: id++, day: dayOf(it.publishAt),
+        id: U.taskId(), day: dayOf(it.publishAt),
         title: `Publish · ${label}`,
         cad:'One-off', pri:'high', at:s.time, prog:'', view:'todo',
         kind:'publish', channel:s.channel,

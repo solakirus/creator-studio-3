@@ -137,6 +137,20 @@
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
   }
 
+  /* A new task's id. Tasks used to take "the highest id + 1", which is fine on
+     one device and wrong on two: the phone and the laptop both see 41 as the
+     highest, both make a 42, and when they sync one of them overwrites the
+     other. This is the time in ms with three random digits after it — still a
+     plain number, still bigger than every older id so sorting by id keeps
+     creation order, and never the same on two devices. Calls in one session
+     only ever go up, so a loop that makes several tasks gets distinct ids. */
+  let lastTaskId = 0;
+  function taskId(){
+    const t = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+    lastTaskId = Math.max(t, lastTaskId + 1);
+    return lastTaskId;
+  }
+
   global.U = {
-    DOW, DOW_N, DOW_FULL, dayGrid, wireDayGrid, readDayGrid, daysLabel, slug, pad, hash, generatedArt, ICON, toast, dayField, wireDayField, readDayField };
+    taskId, DOW, DOW_N, DOW_FULL, dayGrid, wireDayGrid, readDayGrid, daysLabel, slug, pad, hash, generatedArt, ICON, toast, dayField, wireDayField, readDayField };
 })(window);

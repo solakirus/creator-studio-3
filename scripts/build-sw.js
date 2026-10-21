@@ -33,9 +33,14 @@ const h = crypto.createHash('sha256');
 for (const f of list) h.update(f).update(fs.readFileSync(path.join(out, f.slice(2))));
 const build = h.digest('hex').slice(0, 12);
 
+/* Matched by shape, not by placeholder. `npm run site` stamps app/sw.js in
+   place first, which used to replace the __BUILD__ / __FILES__ placeholders
+   for good — after that every deploy re-shipped the same BUILD, the cache
+   name never changed, and the iPad kept serving its old scripts. */
 const src = fs.readFileSync(path.join(root, 'app', 'sw.js'), 'utf8')
-  .replace('__BUILD__', build)
-  .replace('__FILES__', JSON.stringify(list, null, 2));
+  .replace(/const BUILD = (?:'[^']*'|__BUILD__);/, `const BUILD = '${build}';`)
+  .replace(/const FILES = (?:\[[\s\S]*?\];|__FILES__;)/, `const FILES = ${JSON.stringify(list, null, 2)};`);
+if (!src.includes(`'${build}'`)) throw new Error('sw.js: could not find BUILD to stamp');
 
 fs.writeFileSync(path.join(out, 'sw.js'), src);
 console.log(`[sw] build ${build}, ${list.length} files precached`);

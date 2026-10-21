@@ -134,7 +134,7 @@
       if(kind === 'task'){
         const day = onDay || await Data.currentDay();
         const tasks = await Data.tasks();
-        const newId = Math.max(0, ...tasks.map(t => t.id)) + 1;
+        const newId = U.taskId();
         const rest = text.split('\n').slice(1).join('\n').trim();
         await Store.put('tasks', { id:newId, day, title:text.split('\n')[0].slice(0,80),
           cad:'One-off', pri:'med', at:null, prog:'',

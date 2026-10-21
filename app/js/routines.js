@@ -197,11 +197,10 @@
     const o = opts || {};
 
     const tasks = await Data.tasks();
-    let id = Math.max(0, ...tasks.map(t => t.id)) + 1;
     const mins = +o.mins || estimateMinutes(r);
 
     const make = (d) => ({
-      id: id++, day: d,
+      id: U.taskId(), day: d,
       title: r.name,
       cad: o.repeat && o.repeat.length ? 'Weekly' : (r.type || 'Workout'),
       pri: 'med',

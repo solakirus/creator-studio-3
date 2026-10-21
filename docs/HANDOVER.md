@@ -716,3 +716,42 @@ screens. Back returns to the page, still drawn.
 between them broke it. It now terminates on the next key at that indent,
 whatever it is called — a test should not care what sits next to the thing it
 is testing.
+
+## Sync through nastime (2026-10-20)
+
+**Server:** Sync Hub, a single `server.js` (Node 22, built-in SQLite, no npm)
+running in CasaOS on nastime at `http://192.168.4.23:8787`, data in
+`/DATA/AppData/Projects/sync-hub/data` with 14 daily DB backups. Bearer-token
+auth (`SYNC_TOKEN`). Endpoints: `GET/POST /sync/<app>`, `GET /stats`, `/health`.
+Pulls page by a server sequence number, so device clock drift never skips a
+change. Newest `updatedAt` wins; on a tie an edit beats a delete.
+
+**App (`js/sync.js`, loaded straight after `store.js`):** wraps `Store.put/del/
+clear` and notes each changed key (store + key + time) in a side database,
+`creator-studio-3-sync`. A sync pushes the CURRENT value of each noted key (or a
+delete if it's gone), then pulls other devices' changes and writes them with
+`Store.raw` so they aren't noted again. Pictures ride inside records using
+Transfer's `{__blob,b64}` encoding. Not synced: `settings` keys starting
+`backup:` or `sync:`. The board page writes IndexedDB directly, so its
+`DB.put/del` call `parent.Sync.touch('board-items', id)`.
+
+Runs on open, on returning to the app, 5 s after a change, every 3 min, and on
+Settings → Data → **Sync with your server**. First connect: empty server →
+upload; empty device (settings ignored) → take the server's; both have data →
+asks "replace this device" (backs up first) or "combine" (server wins clashes).
+
+**Task ids changed.** Every "highest id + 1" is now `U.taskId()` — ms × 1000 +
+three random digits, still a plain safe integer and still larger than every old
+id. Counting ids collide across devices; these don't. 17 creation sites.
+
+**Plain http is allowed** for the home server: `capacitor.config.json`
+(`server.cleartext`, `android.allowMixedContent`) — run `npx cap sync android`
+after pulling — and Electron's `allowRunningInsecureContent`. The **iPad cannot**
+reach `http://` from the https GitHub Pages site (Safari blocks it, no setting);
+it needs the Tailscale HTTPS address.
+
+**Also fixed:** `scripts/build-sw.js` stamped `app/sw.js` in place, destroying
+its placeholders, so every deploy after that shipped the same BUILD id and the
+iPad's cache-first scripts never refreshed. It now matches BUILD/FILES by shape.
+
+Test: `tests/sync.e2e.js` (see tests/README.md).

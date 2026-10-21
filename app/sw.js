@@ -17,7 +17,7 @@
    The database is untouched by any of this. IndexedDB is not part of the cache
    and a service worker update never clears it. */
 
-const BUILD = 'a663b5dcb43c';
+const BUILD = '6f436c0874c3';
 const CACHE = 'cs3-' + BUILD;
 const FILES = [
   "./index.html",
@@ -179,6 +179,7 @@ const FILES = [
   "./js/storyboard.js",
   "./js/swipecards.js",
   "./js/swiperefs.js",
+  "./js/sync.js",
   "./js/taskform.js",
   "./js/tasklib.js",
   "./js/thumb.js",

@@ -42,6 +42,10 @@ function open(){
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       contextIsolation: true, sandbox: true, spellcheck: true,
+      /* Sync talks to nastime at a plain http:// address on the home network.
+         The app itself is served from a secure scheme, so without this the
+         request is blocked as mixed content. Nothing here loads remote pages. */
+      allowRunningInsecureContent: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });

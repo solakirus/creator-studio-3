@@ -558,7 +558,6 @@
   }
 
   async function commit(p, plan){
-    let nextId = Math.max(0, ...tasks.map(t => +t.id || 0)) + 1;
 
     for(const id of plan.remove){
       await Store.del('tasks', id);
@@ -571,7 +570,7 @@
       await Store.put('tasks', t);
     }
     for(const c of plan.create){
-      const t = { id: nextId++, day: c.day, title: c.title, cad: c.cad, prog: c.prog,
+      const t = { id: U.taskId(), day: c.day, title: c.title, cad: c.cad, prog: c.prog,
                   planId: c.planId, pri: p.pri || 'med', at:null, mins:0, subs:[], view:'todo' };
       tasks.push(t);
       await Store.put('tasks', t);

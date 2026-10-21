@@ -38,14 +38,9 @@
     return m ? `${hh}:${pad(m)}${ap}` : `${hh}${ap}`;
   }
 
-  /* Ids are read fresh every time rather than cached: this form is opened from
-     four screens and a stale high-water mark would overwrite someone's task. */
-  async function nextId(){
-    try {
-      const map = await Store.allMap('tasks');
-      return Math.max(0, ...Object.values(map).map(t => +t.id || 0)) + 1;
-    } catch(e){ return Date.now() % 1e9; }
-  }
+  /* Unique across devices, so a task made here never overwrites one made on
+     the other device when they sync (see U.taskId). */
+  async function nextId(){ return U.taskId(); }
 
   /* opts.day   — program day to land on (what the callers have)
      opts.date  — a timestamp or yyyy-mm-dd, if that is what you have instead
@@ -237,7 +232,7 @@
             const dd = new Date(start);
             dd.setDate(start.getDate() + i);
             if(!repeat.includes(dd.getDay())) continue;
-            const copy = { ...base, id: id++, day: day + i,
+            const copy = { ...base, id: U.taskId(), day: day + i,
               subs: (base.subs || []).map(x => ({ ...x, done:false })) };
             await Store.put('tasks', copy);
             written.push(copy);

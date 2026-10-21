@@ -25,11 +25,13 @@ t('it takes a day to aim at', /opts\.day/.test(form) && /if\(day == null && o\.d
 t('a date works too, converted once', /await Data\.dateToDay\(ts\)/.test(form));
 t('and it falls back to today, never to nothing', /if\(day == null\) day = await Data\.currentDay\(\)/.test(form));
 
-console.log('\n— ids are read fresh, not cached —');
-/* four screens open this form; a cached high-water mark would overwrite a task */
-t('every save re-reads the store', /async function nextId\(\)[\s\S]*?Store\.allMap\('tasks'\)/.test(form));
+console.log('\n— ids are unique across devices, not counted —');
+/* "highest + 1" collides once two devices sync: both make the same next id.
+   U.taskId is time plus random digits, so the phone and laptop never agree. */
+t('ids come from U.taskId', /async function nextId\(\)\{ return U\.taskId\(\); \}/.test(form));
 t('and the id is taken at save time, not at open', /let id = await nextId\(\);/.test(form));
-t('a series increments from it', /id: id\+\+/.test(form));
+t('each copy in a series gets its own', /id: U\.taskId\(\), day: day \+ i/.test(form));
+t('nothing counts from the highest id any more', !/Math\.max\(0, \.\.\./.test(form));
 
 console.log('\n— the month grid can write to a square —');
 t('the day sheet offers it', /data-add style="flex:1">\+ Add a task/.test(cal));

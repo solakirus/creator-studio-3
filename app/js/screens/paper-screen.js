@@ -38,10 +38,9 @@
       tasks: (a, b) => list.filter(t => t.date >= a && t.date <= b),
       addTasks: async items => {
         const tasks = await Data.tasks();
-        let id = Math.max(0, ...tasks.map(t => +t.id || 0)) + 1;
         for(const x of items){
           const day = await Data.dateToDay(new Date(x.date + 'T09:00').getTime());
-          await Store.put('tasks', { id: id++, day, title: x.title, at: x.at || null, mins: +x.mins || 0,
+          await Store.put('tasks', { id: U.taskId(), day, title: x.title, at: x.at || null, mins: +x.mins || 0,
             cad:'', pri:'med', prog:'', subs:[], view:'todo' });
         }
         Data.invalidate('tasks'); await load(); Paper.render();

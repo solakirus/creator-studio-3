@@ -1053,7 +1053,7 @@
         const title = sheetEl.querySelector('#pc-title').value.trim();
         if(!title) return U.toast('Name the piece first');
         const day = (await U.readDayField(sheetEl, 'pc-day')) || today;
-        const id = Math.max(0, ...tasks.map(t => t.id)) + 1;
+        const id = U.taskId();
 
         await Store.put('tasks', { id, day, title, cad:'Shoot day', pri:'med', prog:'',
                                    subs:[], view:'todo', swipeId:swipe.id });

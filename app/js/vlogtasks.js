@@ -15,12 +15,11 @@
      duplicated — pressing this twice is safe. */
   async function write(v, items){
     const existing = await Data.tasks();
-    let id = Math.max(0, ...existing.map(t => t.id)) + 1;
 
     for(const x of items){
       const b = x.beat;
       const task = {
-        id: id++, day: b.day,
+        id: U.taskId(), day: b.day,
         title: b.title,
         cad: `${v.title} · ${x.act.title}`,
         pri: 'med',

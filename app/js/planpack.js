@@ -215,7 +215,8 @@
     });
 
     const added = { tasks:new Set(), vlogs:new Set(), clips:new Set(), series:new Set(), refs:new Set() };
-    let nextTaskId = Math.max(0, ...tasksArr.map(t => +t.id || 0)) + 1;
+    /* unique across devices — see U.taskId */
+    let nextTaskId = U.taskId();
 
     /* --- reference stills. The picture travels as a data: URL and is only
        rewritten when its hash changes; a linked one is just its URL. */
@@ -294,7 +295,7 @@
         if(cid !== undefined) rec.clipId = cid;
         else warnings.push(`Task "${p.title}" points at a clip that is not in the pack or on this phone.`);
       }
-      if(!old){ id = nextTaskId++; idByUid.tasks[p.uid] = id; added.tasks.add(id); }
+      if(!old){ id = nextTaskId; nextTaskId = U.taskId(); idByUid.tasks[p.uid] = id; added.tasks.add(id); }
       work.tasks.set(id, rec);
     }
 

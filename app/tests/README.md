@@ -24,3 +24,18 @@ hand when a change is about behaviour rather than wiring:
 In a container with no route to Google, Chromium spends its first minute trying
 anyway; the newer harnesses pass `--disable-component-update` and friends to
 stop that, and `--no-sandbox` because there is no sandbox to use.
+
+## Sync (2026-10-20)
+
+`sync.e2e.js` runs two (then three) devices, each with its own database,
+against a real Sync Hub server. It is not in `npm test` because it needs the
+server and `fake-indexeddb`:
+
+    cd app
+    npm i --no-save fake-indexeddb
+    SYNC_HUB=/path/to/sync-hub node tests/sync.e2e.js
+
+It checks the cases that decide whether sync loses work: a delete on one
+device and an add on another both landing, newest edit winning, an edit after
+a delete bringing the item back, pictures surviving byte for byte, backup
+bookkeeping staying per-device, and a device joining by replace or combine.

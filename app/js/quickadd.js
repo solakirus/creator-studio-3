@@ -17,7 +17,7 @@
     }
 
     const task = {
-      id: Math.max(0, ...tasks.map(t => +t.id || 0)) + 1,
+      id: U.taskId(),
       day,
       title: (s.title || 'Untitled').trim(),
       cad: s.cad || 'One-off',

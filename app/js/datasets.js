@@ -70,7 +70,6 @@
         const routines = (global.Routines ? await Routines.all() : []);
         const DOW = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
         const existing = await Data.tasks();
-        let id = Math.max(0, ...existing.map(t => t.id)) + 1;
         let made = 0;
 
         for(const r of rows){
@@ -100,7 +99,7 @@
             .filter(x => x !== undefined);
 
           if(!days.length){
-            await Store.put('tasks', { ...base, id:id++, day });
+            await Store.put('tasks', { ...base, id:U.taskId(), day });
             made++;
             continue;
           }
@@ -112,7 +111,7 @@
           for(let i = 0; i < weeks * 7; i++){
             const d = new Date(start); d.setDate(start.getDate() + i);
             if(!days.includes(d.getDay())) continue;
-            await Store.put('tasks', { ...base, id:id++, day: day + i, series:seriesKey,
+            await Store.put('tasks', { ...base, id:U.taskId(), day: day + i, series:seriesKey,
               subs: base.subs.map(x => ({ ...x, done:false })) });
             made++;
           }
