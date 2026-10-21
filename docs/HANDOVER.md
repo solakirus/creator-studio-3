@@ -755,3 +755,34 @@ its placeholders, so every deploy after that shipped the same BUILD id and the
 iPad's cache-first scripts never refreshed. It now matches BUILD/FILES by shape.
 
 Test: `tests/sync.e2e.js` (see tests/README.md).
+
+## Self-updating phone and Windows apps (2026-10-21)
+
+The web half (app/) is what GitHub Pages serves the iPad. The APK and the
+Windows app now fetch new versions of those files from there themselves, so
+only **native** changes (android/, electron/, plugins) need build.bat.
+
+- **update.json** — every file with its SHA-256 + a build id, written by
+  `scripts/web-manifest.js`, called from build-sw.js (so Pages' `_site/` gets
+  it) and copy-web.js (so the copy inside the APK/exe knows what it has).
+  `NATIVE_LEVEL` there: bump it when web code starts needing a newer shell;
+  devices on an older APK/exe then stay put until rebuilt.
+- **Android** — `js/updater.js`. 8 s after start, compares update.json with the
+  site's; downloads only changed files (unchanged ones copied from what is
+  running), verifies each, writes to app storage `web/<build>/`. Next launch:
+  Capacitor's WebView plugin `setServerBasePath` + `persistServerBasePath` —
+  same https://localhost origin, so IndexedDB/sync untouched. Pending build not
+  confirmed by `Updater.ok()` (app.js, 3 s after first screen) in 3 starts →
+  back to the previous one or `setServerAssetPath('public')`, build marked bad.
+  `android-setup.js --patch-only` now sets versionCode = minutes since 2024, so
+  Capacitor's isNewBinary() sees every new APK and drops downloaded files.
+- **Windows** — `WebUpdate` in electron/main.js does the same into
+  `%APPDATA%/Creator Studio 3/web/<build>/` and serves it through app://cs3/.
+  A new installer always resets to its own copy. Preload exposes `CS3Update`.
+- **Settings → Data → App updates** shows the running build; tap checks now.
+- Needs GitHub Pages' `Access-Control-Allow-Origin: *` (it sends it).
+
+Also: `js/aspectfix.js` — height from width for every `aspect-ratio` box on
+browsers without it (iPadOS < 15). Loaded first; does nothing elsewhere.
+
+Tests: `node app/tests/webupdate-win.e2e.js`, `python3 app/tests/browser/updater.browser.py`.

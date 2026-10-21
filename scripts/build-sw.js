@@ -11,7 +11,7 @@ const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const out = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'app');
 
-const SKIP = new Set(['tests', 'sw.js', 'build-preview.sh']);
+const SKIP = new Set(['tests', 'sw.js', 'build-preview.sh', 'update.json']);
 const list = [];
 (function walk(dir, rel) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -44,3 +44,8 @@ if (!src.includes(`'${build}'`)) throw new Error('sw.js: could not find BUILD to
 
 fs.writeFileSync(path.join(out, 'sw.js'), src);
 console.log(`[sw] build ${build}, ${list.length} files precached`);
+
+/* and the list the phone and Windows apps update from — after sw.js is
+   stamped, so the hash it records for sw.js is the one that ships */
+const m = require('./web-manifest').write(out);
+console.log(`[update] build ${m.build}, ${m.files.length} files in update.json`);

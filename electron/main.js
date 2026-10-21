@@ -79,7 +79,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   app.setAppUserModelId('com.solakirus.creatorstudio3');   /* Windows needs this for notifications */
 
-  const root = path.join(__dirname, '..', 'www');
+  const root = WebUpdate.choose();
   protocol.handle('app', req => {
     let p = decodeURIComponent(new URL(req.url).pathname);
     if (p === '/' || p === '') p = '/index.html';
@@ -94,8 +94,128 @@ app.whenReady().then(() => {
     (details, cb) => { details.requestHeaders['Referer'] = 'https://creatorstudio3.app/'; cb({ requestHeaders: details.requestHeaders }); });
 
   open();
+  /* look for a newer version once the window is up; it loads next launch */
+  setTimeout(() => WebUpdate.check().catch(err => console.warn('update check', err)), 8000);
 });
 app.on('window-all-closed', () => app.quit());
+
+/* ---------------------------------------------------------- self-update
+   The Windows twin of app/js/updater.js. The web files (www/) are the same
+   ones GitHub Pages publishes for the iPad, so rather than reinstall for every
+   change, this downloads new versions of them from there into the user's own
+   app-data folder and serves those instead — through the same app://cs3/
+   origin, so the database and settings never move.
+
+   New versions are downloaded in the background and used from the next
+   launch. Only files whose SHA-256 changed are downloaded; every file is
+   checked before it is used. A version that fails to open three times is
+   dropped for the one before it. Running a new installer always starts from
+   that installer's copy. */
+const WebUpdate = (() => {
+  const REMOTE = process.env.CS_UPDATE_REMOTE || 'https://solakirus.github.io/creator-studio-3/';   /* tests point it elsewhere */
+  const crypto = require('crypto');
+  const shipped = path.join(__dirname, '..', 'www');
+  const base = () => path.join(app.getPath('userData'), 'web');
+  const stateFile = () => path.join(base(), 'state.json');
+  const readJSON = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
+  const load = () => readJSON(stateFile()) || {};
+  const save = s => { fs.mkdirSync(base(), { recursive: true }); fs.writeFileSync(stateFile(), JSON.stringify(s, null, 1)); };
+  const manifestOf = dir => readJSON(path.join(dir, 'update.json'));
+  let active = shipped, status = { state: 'idle' };
+
+  function choose(){
+    const s = load(); s.bad = s.bad || [];
+    const ship = manifestOf(shipped);
+    /* A new installer was run: start from its copy, like Android does with a
+       new APK. Anything newer online is fetched again by check(). */
+    if (ship && s.shipped !== ship.build) { s.shipped = ship.build; s.active = null; s.ready = null; s.pending = null; }
+    const usable = b => b && !s.bad.includes(b) && fs.existsSync(path.join(base(), b, 'update.json'));
+    let pick = null;
+    if (usable(s.ready)) { s.pending = { build: s.ready, tries: 0, prev: s.active || null }; pick = s.ready; s.ready = null; }
+    else if (usable(s.active)) pick = s.active;
+
+    if (pick && s.pending && s.pending.build === pick) {
+      s.pending.tries = (s.pending.tries || 0) + 1;
+      if (s.pending.tries > 3) {                     /* it never came up: go back */
+        s.bad.push(pick); pick = usable(s.pending.prev) ? s.pending.prev : null; s.pending = null;
+      }
+    }
+    s.active = pick; save(s);
+    active = pick ? path.join(base(), pick) : shipped;
+    return active;
+  }
+
+  function ok(){
+    const s = load();
+    if (s.pending && s.pending.build === s.active) { s.pending = null; save(s); }
+    /* keep what is running, what came before it and what is waiting */
+    const keep = new Set([s.active, s.ready, s.pending && s.pending.prev].filter(Boolean));
+    try {
+      for (const d of fs.readdirSync(base(), { withFileTypes: true })) {
+        if (d.isDirectory() && !keep.has(d.name)) fs.rmSync(path.join(base(), d.name), { recursive: true, force: true });
+      }
+    } catch (e) {}
+  }
+
+  async function check(){
+    const cur = manifestOf(active);
+    if (!cur) return (status = { state: 'error', reason: 'This copy has no update.json' });
+    status = { state: 'checking' };
+    let remote;
+    try {
+      const r = await net.fetch(REMOTE + 'update.json?t=' + Date.now(), { cache: 'no-store' });
+      remote = await r.json();
+    } catch (e) { return (status = { state: 'error', reason: 'Could not reach GitHub' }); }
+    const s = load();
+    const ship = manifestOf(shipped);
+    if (!remote || remote.format !== 'cs3-web') return (status = { state: 'error', reason: 'No update information online' });
+    if (remote.build === cur.build || (s.bad || []).includes(remote.build)) return (status = { state: 'current', build: cur.build });
+    if (remote.native > ((ship && ship.native) || 1))
+      return (status = { state: 'error', needsApk: true, reason: 'This update needs a new Windows build — run build.bat' });
+    if (s.ready === remote.build) return (status = { state: 'ready', build: remote.build });
+
+    const have = new Map(cur.files.map(f => [f[0], f[1]]));
+    const tmp = path.join(base(), remote.build + '.part'), dest = path.join(base(), remote.build);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    status = { state: 'downloading', done: 0, total: remote.files.length };
+    try {
+      for (const [p, hash] of remote.files) {
+        let buf;
+        if (have.get(p) === hash) buf = fs.readFileSync(path.join(active, p));
+        else {
+          const r = await net.fetch(REMOTE + p + '?b=' + remote.build, { cache: 'no-store' });
+          if (!r.ok) throw new Error(p + ': ' + r.status);
+          buf = Buffer.from(await r.arrayBuffer());
+        }
+        if (crypto.createHash('sha256').update(buf).digest('hex') !== hash) throw new Error(p + ' did not match its fingerprint');
+        const out = path.join(tmp, p);
+        if (!out.startsWith(tmp)) throw new Error('bad path ' + p);
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.writeFileSync(out, buf);
+        status.done++;
+      }
+      fs.writeFileSync(path.join(tmp, 'update.json'), JSON.stringify(remote));
+      fs.rmSync(dest, { recursive: true, force: true });
+      fs.renameSync(tmp, dest);
+      const s2 = load(); s2.ready = remote.build; save(s2);
+      status = { state: 'ready', build: remote.build };
+      if (win) win.webContents.send('cs3:update-ready', remote.build);
+    } catch (e) {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      status = { state: 'error', reason: e.message || String(e) };
+    }
+    return status;
+  }
+
+  return { choose, ok, check, status: () => status, current: () => manifestOf(active) };
+})();
+
+ipcMain.on('cs3:web-ok', () => WebUpdate.ok());
+ipcMain.handle('cs3:web-check', () => WebUpdate.check());
+ipcMain.handle('cs3:web-info', () => {
+  const m = WebUpdate.current();
+  return { available: true, build: m && m.build, made: m && m.made, status: WebUpdate.status() };
+});
 
 /* ---------------------------------------------------------- bridge: App */
 
@@ -224,3 +344,6 @@ ipcMain.handle('cs3:notif-cancel', (e, ids) => {
   (ids || []).forEach(id => { const p = pending.get(id); if (p) { clearTimeout(p.timer); pending.delete(id); } });
   return {};
 });
+
+/* for tests/webupdate.e2e.js */
+module.exports = { WebUpdate };

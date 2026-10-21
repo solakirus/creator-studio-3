@@ -124,6 +124,8 @@
         <button class="row" data-go="sync"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${D.sync}"/></svg>
           <span class="lbl">Sync with your server<small id="syLine">checking…</small></span>
           <i class="bkdot" id="syDot"></i>${chev}</button>
+        <button class="row" data-go="appupdate"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${D.down}"/></svg>
+          <span class="lbl">App updates<small id="upLine">checking…</small></span>${chev}</button>
         ${row(D.down,'Import from CSV','Meals, clips, tasks or pantry items','data-go="csv"')}
         ${row(D.down,'Restore from backup','A Creator Studio JSON file','data-go="restore"')}
         ${row(D.down,'Open a plan pack','From the laptop Planner or the Reference Library — safe to open twice','data-go="planpack"')}
@@ -186,6 +188,16 @@
       t.setAttribute('aria-checked', String(await Notify.isEnabled()));
       if(!Notify.available() && note)
         note.textContent = 'Only available in the installed app, not the browser';
+    })();
+
+    /* which version is running, and whether a newer one is waiting */
+    (async () => {
+      const line = el.querySelector('#upLine');
+      if(!line) return;
+      try {
+        const i = await appUpdateInfo();
+        line.textContent = updateLine(i);
+      } catch(e){ line.textContent = 'Could not check'; }
     })();
 
     /* the sync line: same idea as the backup one below */
@@ -283,6 +295,7 @@
       if(go.dataset.go === 'planpack')  return openPlanPack();
       if(go.dataset.go === 'ai')        return ShotAI.openSettings();
       if(go.dataset.go === 'sync')      return openSync(() => mount(el));
+      if(go.dataset.go === 'appupdate') return checkAppUpdate(() => mount(el));
       if(go.dataset.go === 'autobackup') return openAutoBackup(() => mount(el));
       if(go.dataset.go === 'backup')    return doBackup();
       if(go.dataset.go === 'csvout')    return doSheets();
@@ -329,6 +342,37 @@
     const wait = s.pending ? ` · ${s.pending} change${s.pending === 1 ? '' : 's'} waiting` : '';
     if(s.error) return s.error + wait;
     return 'Synced ' + agoText(s.at) + wait;
+  }
+
+  /* ---------- app updates ----------
+     Android (js/updater.js) and Windows (electron/main.js) fetch new versions
+     of the web files from GitHub Pages on their own; the iPad loads the site
+     directly. This row says which version is running and checks on a tap. */
+  async function appUpdateInfo(){
+    if(window.CS3Update) return { kind:'windows', ...(await CS3Update.info()) };
+    if(window.Updater && (await Updater.info()).available) return { kind:'android', ...(await Updater.info()) };
+    return { kind:'web' };
+  }
+  function updateLine(i){
+    if(i.kind === 'web') return 'Updates itself whenever it opens online';
+    const v = i.build ? 'Version ' + i.build.slice(0, 7) : 'This version';
+    const s = i.status || {};
+    if(s.state === 'downloading') return `Downloading an update… ${s.done || 0} of ${s.total || '?'}`;
+    if(s.state === 'ready') return v + ' · update downloaded, loads next time you open the app';
+    if(s.state === 'error' && s.needsApk) return v + ' · ' + s.reason;
+    return v + ' · updates itself from GitHub';
+  }
+  async function checkAppUpdate(after){
+    const i = await appUpdateInfo();
+    if(i.kind === 'web') return U.toast('This one is the website itself — it is always current when it opens online');
+    U.toast('Checking for an update…');
+    const r = i.kind === 'windows' ? await CS3Update.check() : await Updater.check({ quiet:true });
+    const ready = r.ready || r.state === 'ready';
+    const current = r.upToDate || r.state === 'current';
+    U.toast(ready ? 'Update downloaded — close and reopen the app to use it'
+          : current ? 'Already up to date'
+          : 'Could not update: ' + (r.reason || 'unknown problem'));
+    after && after();
   }
 
   async function openSync(after){

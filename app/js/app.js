@@ -276,6 +276,16 @@
     });
 
     go('today');
+
+    /* Reaching the first screen is the proof a self-updated version works;
+       without it, one that fails three times is rolled back. */
+    setTimeout(() => {
+      if(global.Updater) Updater.ok();
+      if(global.CS3Update){
+        CS3Update.ok();
+        CS3Update.onReady(() => U.toast('App update downloaded — it loads next time you open the app'));
+      }
+    }, 3000);
   }
 
   /* ---- going back ----

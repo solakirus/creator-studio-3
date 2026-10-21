@@ -115,6 +115,14 @@ if (fs.existsSync(gradle)) {
   g = g.replace(/applicationId\s+["'][^"']+["']/, `applicationId "${NEW_ID}"`);
   if (g !== before) { write(gradle, g); log(`applicationId -> ${NEW_ID}`); }
   if (!g.includes(`applicationId "${NEW_ID}"`)) fail('Could not set applicationId in android\\app\\build.gradle');
+
+  /* A fresh versionCode on every build (minutes since 2024). Capacitor uses it
+     to tell that a new APK was installed and, when it was, drops any web
+     update it downloaded so the new APK's own files run. With the same number
+     every build, a reinstalled APK could sit behind an older download. */
+  const code = Math.floor((Date.now() - Date.UTC(2024, 0, 1)) / 60000);
+  const g2 = g.replace(/versionCode\s+\d+/, `versionCode ${code}`);
+  if (g2 !== g) { write(gradle, g2); g = g2; log(`versionCode -> ${code}`); }
 }
 
 /* name, package name, link scheme */

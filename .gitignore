@@ -11,3 +11,4 @@ android/app/src/main/assets/public/
 android/capacitor-cordova-android-plugins/build/
 android/local.properties
 android/.idea/
+app/update.json

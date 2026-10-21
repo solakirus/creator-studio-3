@@ -62,6 +62,17 @@ const LocalNotifications = {
   addListener: (event, cb) => handle(new Set(), cb)
 };
 
+/* Self-update: main.js downloads new web files from GitHub Pages and uses
+   them from the next launch. The page says when it has started properly. */
+const updateListeners = new Set();
+ipcRenderer.on('cs3:update-ready', (e, build) => updateListeners.forEach(cb => { try { cb(build); } catch (err) {} }));
+contextBridge.exposeInMainWorld('CS3Update', {
+  ok: () => ipcRenderer.send('cs3:web-ok'),
+  check: () => ipcRenderer.invoke('cs3:web-check'),
+  info: () => ipcRenderer.invoke('cs3:web-info'),
+  onReady: cb => { if (typeof cb === 'function') updateListeners.add(cb); }
+});
+
 contextBridge.exposeInMainWorld('Capacitor', {
   isNativePlatform: () => true,
   getPlatform: () => 'electron',
