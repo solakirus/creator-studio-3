@@ -151,6 +151,12 @@ function device(name) {
     t('reconnecting it fills it back up', Object.keys(await S(ipad).allMap('tasks')).length
       === Object.keys(await S(phone).allMap('tasks')).length, JSON.stringify(after));
 
+    head('a device whose data was wiped but kept its sync place');
+    for (const n of S(ipad).names()) await S(ipad).raw.clear(n);   /* data gone, side database kept */
+    const heal = await Y(ipad).syncNow();
+    t('it downloads everything again instead of "0 in, 0 out"', heal.got > 0
+      && Object.keys(await S(ipad).allMap('tasks')).length === Object.keys(await S(phone).allMap('tasks')).length, JSON.stringify(heal));
+
     head('ids');
     const ids = new Set(); for (let i = 0; i < 500; i++) ids.add(phone.U.taskId());
     const lap = laptop.U.taskId();

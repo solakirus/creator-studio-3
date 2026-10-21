@@ -245,6 +245,11 @@
   async function pull(cfg, me){
     const kp = await layout();
     let since = (await meta('cursor')) || 0, changed = 0;
+    /* The app's data was cleared (an iPad clearing a home-screen app's storage,
+       say) but this side database kept its place in the server's history. It
+       would then ask only for changes after that point and get none: "0 in,
+       0 out" on an empty device. An empty device starts from the beginning. */
+    if(since && !(await localCount())){ since = 0; await setMeta('cursor', 0); }
     for(;;){
       const r = await call(cfg, 'GET', `/sync/${APP}?since=${since}`);
       for(const c of (r.changes || [])){
