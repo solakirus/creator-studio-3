@@ -1517,7 +1517,7 @@ button.hrow{width:100%;background:none;border:0;text-align:left;cursor:pointer;
 .swipecard{background:var(--surface-2);border:1px solid #2B2822;border-radius:var(--r);overflow:hidden;
   cursor:pointer;text-align:left;color:var(--cream);padding:0;box-shadow:0 var(--offset) 0 var(--shadow);
   display:flex;flex-direction:column}
-.swipecard .thumb{position:relative;aspect-ratio:4/5;background-size:cover;background-position:center;
+.swipecard .thumb{position:relative;display:block;aspect-ratio:4/5;background-size:cover;background-position:center;
   background-color:#221F1A}
 .swipecard .thumb::after{content:"";position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(10,8,6,.15) 40%,rgba(10,8,6,.72) 100%)}
@@ -1530,7 +1530,7 @@ button.hrow{width:100%;background:none;border:0;text-align:left;cursor:pointer;
 .swipecard .play svg{width:12px;height:12px}
 .swipecard .noangle{position:absolute;left:8px;bottom:8px;z-index:2;font-family:var(--display),sans-serif;
   font-weight:900;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}
-.swipecard .tx{padding:10px 11px 12px}
+.swipecard .tx{display:block;padding:10px 11px 12px}
 .swipecard h3{font-family:var(--display),sans-serif;font-weight:900;font-size:15.5px;letter-spacing:-.01em;
   line-height:1.2;margin:0 0 8px}
 .mini-tags{display:flex;gap:5px;flex-wrap:wrap}
