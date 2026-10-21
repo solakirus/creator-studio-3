@@ -136,7 +136,7 @@
     } catch(e){
       if(e && e.name === 'AbortError') throw new Error('The server took too long to answer');
       if(e && /Failed to fetch|NetworkError|Load failed/i.test(e.message || ''))
-        throw new Error('Could not reach the server — are you on home Wi-Fi?');
+        throw new Error('Could not reach the server — check the address, and that you are on home Wi-Fi or Tailscale is on');
       throw e;
     } finally { if(timer) clearTimeout(timer); }
   }

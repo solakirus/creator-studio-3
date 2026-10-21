@@ -140,6 +140,17 @@ function device(name) {
     t('and where both had an item, the server\'s is kept', (await S(ipad).get('tasks', 1)).title === 'edited after the delete'
       && (await S(phone).get('tasks', 1)).title === 'edited after the delete');
 
+    head('clearing one device stays on that device');
+    /* what Settings > Clear local data does */
+    await Y(ipad).disconnect();
+    for (const n of S(ipad).names()) await S(ipad).raw.clear(n);
+    await Y(phone).syncNow();
+    t('the cleared device is empty', Object.keys(await S(ipad).allMap('tasks')).length === 0);
+    t('and the other device still has everything', Object.keys(await S(phone).allMap('tasks')).length >= 3);
+    const after = await Y(ipad).connect(URL_, TOKEN, 'replace');
+    t('reconnecting it fills it back up', Object.keys(await S(ipad).allMap('tasks')).length
+      === Object.keys(await S(phone).allMap('tasks')).length, JSON.stringify(after));
+
     head('ids');
     const ids = new Set(); for (let i = 0; i < 500; i++) ids.add(phone.U.taskId());
     const lap = laptop.U.taskId();

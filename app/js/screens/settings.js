@@ -404,10 +404,17 @@
       const run = async (how, btn) => {
         btn.disabled = true; btn.textContent = how === 'replace' ? 'Fetching…' : 'Sending…';
         try {
-          if(how === 'replace' && window.Backup){
-            /* the one choice that drops data here, so keep a copy of it first */
-            msg('Backing up this device first…');
-            try { await Backup.run('records', { manual:true }); } catch(e){}
+          /* The one choice that drops data here, so keep a copy first — but only
+             where that is silent. On an iPad it opens a file preview over the
+             app mid-connect, which is how the first iPad connect got stuck; the
+             choice text there says to Export everything first instead. */
+          if(how === 'replace' && window.Backup && await Sync.localCount()){
+            let silent = false;
+            try { silent = (await Backup.status()).silent; } catch(e){}
+            if(silent){
+              msg('Backing up this device first…');
+              try { await Backup.run('records', { manual:true }); } catch(e){}
+            }
           }
           msg('Syncing — the first one can take a minute with pictures…');
           done(await Sync.connect($('#sy-srv').value, $('#sy-tok').value, how));
@@ -423,6 +430,8 @@
         try {
           const { records } = await Sync.probe($('#sy-srv').value, $('#sy-tok').value);
           const here = await Sync.localCount();
+          let silent = true;
+          try { silent = window.Backup ? (await Backup.status()).silent : true; } catch(e){}
           if(!records) return run('upload', c);       /* first device: send it all up */
           if(!here) return run('replace', c);         /* empty device: take the server's */
           c.style.display = 'none';
@@ -430,7 +439,9 @@
             <p style="${p}">The server already has <b>${records}</b> records, and this device has
               <b>${here}</b>. Which should this device end up with?</p>
             <button class="btn-primary" data-how="replace" style="width:100%">Use the server's — replace this device</button>
-            <p class="hintline" style="margin:6px 0 12px">Right for a second device. This device's data is backed up first, then swapped for the server's.</p>
+            <p class="hintline" style="margin:6px 0 12px">Right for a second device. ${silent
+              ? "This device's data is backed up first, then swapped for the server's."
+              : "Its data is swapped for the server's. Want a copy first? Close this and use Export everything."}</p>
             <button class="btn-ghost" data-how="merge" style="width:100%">Combine both</button>
             <p class="hintline" style="margin:6px 0 0">Adds what is only here to the server. Where both have the same item, the server's version is kept.</p>`;
           msg('');
@@ -1168,7 +1179,11 @@
         if(sheetEl.querySelector('#wp').value.trim().toUpperCase() !== 'DELETE')
           return U.toast('Type DELETE to confirm');
         try {
-          for(const n of Store.names()) await Store.clear(n);
+          /* "Local" means local: disconnect sync first and clear underneath it,
+             or every delete would go to the server and empty the other devices. */
+          if(window.Sync) await Sync.disconnect();
+          const clear = (Store.raw && Store.raw.clear) || Store.clear;
+          for(const n of Store.names()) await clear(n);
           Data.invalidate(); Nutrition.invalidate(); Channels.invalidate();
           App.closeSheet();
           U.toast('Everything cleared');
